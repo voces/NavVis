@@ -260,22 +260,124 @@
         
     };
     
-    function addTriangleToSegment(a, b, triangle) {
-        
-        var pair = getPair(a, b);
-        
-        a.segments.add(pair);
-        b.segments.add(pair);
-        
-        if (pair.cells.push(triangle) > 1) {
-            //console.log(a.lefts.get(
-            console.log(pair.cells);
-        }
-        
-        return pair;
+    function replaceArrayContents(a, b) {
+        a.splice.apply(a, [0, a.length].concat(b));
     }
     
-    var FIRST = true;
+    function forSwapReverse(array) {
+        var left, right, arr = [];
+        
+        for (left = 0, right = array.length - 1; left < right; left++, right--) {
+            arr[left] = array[right];
+            arr[right] = array[left];
+        }
+        
+        if (arr.length % 2 === 1)
+            arr[(arr.length - 1) / 2] = array[(arr.length - 1) / 2];
+        
+        return arr;
+    }
+    
+    //true is left, false is right
+    function goingLeft(start, end, length) {
+        
+        if (start < end) {
+            
+            if (start === 0 && end === length - 1)
+                return true;
+            
+            return false;
+        }
+        
+        if (end === 0 && start === length - 1)
+            return false;
+        
+        return true;
+        
+    }
+    
+    function mergeSimple(a, b, start, end) {
+        
+        var aStart, aEnd,
+            bStart, bEnd,
+            
+            aDirection,
+            bDirection,
+            
+            arr,
+            
+            i;
+        
+        //console.log(start.toString(), "->", end.toString());
+        
+        //Find start/end in a
+        for (i = 0; i < a.length; i++)
+            if (a[i] === start) {
+                aStart = i;
+                if (typeof aEnd !== "undefined") break;
+            } else if (a[i] === end) {
+                aEnd = i;
+                if (typeof aStart !== "undefined") break;
+            }
+        
+        //Find start/end in b
+        for (i = 0; i < b.length; i++)
+            if (b[i] === start) {
+                bStart = i;
+                if (typeof bEnd !== "undefined") break;
+            } else if (b[i] === end) {
+                bEnd = i;
+                if (typeof bStart !== "undefined") break;
+            }
+        
+        aDirection = goingLeft(aStart, aEnd, a.length);
+        bDirection = goingLeft(bStart, bEnd, b.length);
+        
+        //Reverse b if order is same as a
+        if (aDirection === bDirection) {
+            //console.log("swapB");
+            
+            bDirection != bDirection;
+            
+            b = forSwapReverse(b);
+            bStart = b.length - bStart - 1;
+            bEnd = b.length - bEnd - 1;
+        }
+        
+        //console.log("a", aDirection, aStart, aEnd, a.join(" | "));
+        //console.log("b", bDirection, bStart, bEnd, b.join(" | "));
+        
+        //Grab first part of a
+        if (aDirection) arr = a.slice(aStart === 0 ? aStart : 0, aEnd + 1);
+        else arr = a.slice(aEnd === 0 ? aEnd : 0, aStart + 1);
+        
+        //console.log(1, arr.join(" | "));
+        
+        //Grab second/third parts from b
+        if (bDirection) arr = arr.concat(b.slice(bStart + 1, bStart === 0 ? bEnd : b.length));
+        else arr = arr.concat(b.slice(bEnd + 1, bEnd === 0 ? bStart : b.length));
+        
+        //console.log(2, arr.join(" | "));
+        
+        if (bDirection && bStart !== 0) arr = arr.concat(b.slice(0, bEnd));
+        else if (!bDirection && bEnd !== 0) arr = arr.concat(b.slice(0, bStart));
+        
+        //console.log(3, arr.join(" | "));
+        
+        //Grab fourth part from a
+        if (aDirection) arr = arr.concat(a.slice(aEnd + 1, a.length));
+        else arr = arr.concat(a.slice(aStart, a.length));
+        
+        //console.log(4, arr.join(" | "));
+        
+        replaceArrayContents(a, arr);
+        
+        return a;
+        
+    }
+    
+    var FIRST = true,
+        MYID = 0;
     
     function clip(parent, holes) {
         
@@ -285,7 +387,9 @@
             
             a, b, c, triangle,
             
-            i, n;
+            tests, pair, d, e,
+            
+            i, n, t;
         
         for (i = 0; i < parent.length; i++) {
             list.push(parent[i].x);
@@ -300,6 +404,8 @@
             }
         }
         
+        //console.log(triangles);
+        
         trianglesRaw = earcut(list, indicies);
         
         for (i = 0; i < trianglesRaw.length; i += 3) {
@@ -309,6 +415,7 @@
             c = getPoint(list[trianglesRaw[i + 2] * 2], list[trianglesRaw[i + 2] * 2 + 1]);
             
             triangle = [a, b, c];
+            triangle.id = MYID++;
             
             a.lefts.set(triangle, b);
             b.lefts.set(triangle, c);
@@ -318,18 +425,93 @@
             b.rights.set(triangle, a);
             c.rights.set(triangle, b);
             
-            a.cells.push(triangle);
+            /*a.cells.push(triangle);
             b.cells.push(triangle);
-            c.cells.push(triangle);
+            c.cells.push(triangle);*/
             
-            addTriangleToSegment(a, b, triangle);
-            addTriangleToSegment(b, c, triangle);
-            addTriangleToSegment(c, a, triangle);
+            tests = [[a, b], [b, c], [c, a]];
+            
+            for (t = 0; t < 3; t++) {
+                
+                d = tests[t][0];
+                e = tests[t][1];
+                
+                pair = getPair(d, e);
+                                
+                if (pair.cells.push(triangle) === 2) {
+                    
+                    /*console.log(t, d.toString(), e.toString(), triangle.join(" | " ));
+                    
+                    console.log(pair.cells.length, pair.cells[0] === pair.cells[1],
+                                pair.cells[0].join(" | "), pair.cells[1].join(" | "));
+                    
+                    console.log(d, e, pair);
+                    
+                    console.log("testMerge",
+                               d.lefts.get(pair.cells[0]), d.rights.get(pair.cells[1]),
+                               e.lefts.get(pair.cells[1]), e.rights.get(pair.cells[0]));*/
+                    
+                    if (Geo.orientation(d.lefts.get(pair.cells[0]), d.rights.get(pair.cells[1]), d) != 1 &&
+                        Geo.orientation(e.lefts.get(pair.cells[1]), e.rights.get(pair.cells[0]), e) != 1) {
+                        
+                        /*console.log(pair.cells[0].join(" | "));
+                        console.log(pair.cells[1].join(" | "));*/
+                        
+                        //Loop through the points that make up the new cell
+                        for (n = 0; n < pair.cells[1].length; n++) {
+                            
+                            //Create new lefts/rights for the points relative to the primary cell
+                            if (pair.cells[1][n] !== pair[1])
+                                pair.cells[1][n].lefts.set(pair.cells[0], pair.cells[1][n].lefts.get(pair.cells[1]));
+                            
+                            if (pair.cells[1][n] !== pair[0])
+                                pair.cells[1][n].rights.set(pair.cells[0], pair.cells[1][n].rights.get(pair.cells[1]));
+                            
+                            //Delete lefts/rights for the points relative to the secondary cell
+                            pair.cells[1][n].lefts.delete(pair.cells[1]);
+                            pair.cells[1][n].rights.delete(pair.cells[1]);
+                            
+                        }
+                        
+                        //console.log("FIX", pair[0].toString(), pair[1].toString());
+                        
+                        //pair[1].lefts.set(pair.cells[0], pair[1].lefts.get(pair.cells[0]));
+                        
+                        //pair[0].lefts.set(pair.cells[0], 
+                        
+                        triangle = mergeSimple(pair.cells[0], pair.cells[1], d, e);
+                        
+                        //console.log("before", triangle.join(" | "));
+                        //console.log("merged", triangle = mergeSimple(pair.cells[0], pair.cells[1], d, e));
+                        //console.log("after", triangle.join(" | "));
+                        
+                        d.cells = [triangle];
+                        e.cells = [triangle];
+                        
+                        pair.cells = [triangle];
+                        
+                        //console.log(triangle.join(" | "));
+                        triangles.splice(triangles.indexOf(pair.cells[1]), 1);
+                        
+                        new Drawing.Line(d, e).color("red").width(1).append();
+                    }
+
+                } else {
+                    
+                    d.segments.add(pair);
+                    e.segments.add(pair);
+                    
+                    //new Drawing.Line(d, e).append();
+                    
+                }
+                
+            }
             
             triangles.push(triangle);
-            
-            new Drawing.Path(triangle).close().append().draw();
         }
+        
+        for (i = 0; i < triangles.length; i++)
+            new Drawing.Path(triangles[i]).fill("rgba(0,0,0,0)").close().append().draw();
         
         console.log(triangles);
         

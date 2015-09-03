@@ -94,6 +94,18 @@
         return this;
     };
     
+    Path.prototype.fill = function(color) {
+        this.path.setAttribute("fill", color);
+        
+        return this;
+    };
+    
+    Path.prototype.color = function (color) {
+        this.path.setAttribute("stroke", color);
+        
+        return this;
+    };
+    
     function Line(start, end) {
         this.start = start;
         this.end = end;
@@ -105,6 +117,12 @@
         this.path.setAttribute("stroke-width", "3");
         this.draw();
     }
+    
+    Line.prototype.color = function (color) {
+        this.path.setAttribute("stroke", color);
+        
+        return this;
+    };
     
     Line.prototype.append = function () {
         svg.appendChild(this.path);
@@ -120,6 +138,12 @@
     
     Line.prototype.draw = function () {
         this.path.setAttribute("d", "M" + this.start.x + " " + this.start.y + " L " + this.end.x + " " + this.end.y);
+        
+        return this;
+    };
+    
+    Line.prototype.width = function (width) {
+        this.path.setAttribute("stroke-width", width);
         
         return this;
     };
@@ -301,7 +325,7 @@
     document.addEventListener("DOMContentLoaded", function () {
         
         svg = document.getElementById("svg");
-        
+				
         svg.addEventListener("mousedown", svgDown);
         svg.addEventListener("mouseup", svgUp);
         svg.addEventListener("mousemove", svgMove);
