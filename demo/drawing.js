@@ -29,6 +29,11 @@
         //this.circle.addEventListener("click", this.onClick.bind(this));
     }
     
+    Point.prototype.data = function(data) {
+        this.circle.setAttribute("data", data);
+        return this;
+    };
+    
     Point.prototype.draw = function () {
         this.circle.setAttribute("cx", this.x);
         this.circle.setAttribute("cy", this.y);

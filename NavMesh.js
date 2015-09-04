@@ -377,7 +377,9 @@
     }
     
     var FIRST = true,
-        MYID = 0;
+        MYID = 0,
+        
+        color = ["#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff", "#ff00ff", "#999999", "#7f0000", "#7f7f00"];
     
     function clip(parent, holes) {
         
@@ -385,11 +387,13 @@
             
             trianglesRaw, triangles = [],
             
-            a, b, c, triangle,
+            a, b, c, triangle, flag,
             
             tests, pair, d, e,
             
-            i, n, t;
+            i, n, t,
+            
+            str;
         
         for (i = 0; i < parent.length; i++) {
             list.push(parent[i].x);
@@ -417,6 +421,11 @@
             triangle = [a, b, c];
             triangle.id = MYID++;
             
+            flag = true;
+            
+            //new Drawing.Path(triangle).fill(color[triangle.id]).close().append().draw();
+            //console.log("triangle", triangle.id, triangle.join(" | "));
+            
             a.lefts.set(triangle, b);
             b.lefts.set(triangle, c);
             c.lefts.set(triangle, a);
@@ -437,7 +446,7 @@
                 e = tests[t][1];
                 
                 pair = getPair(d, e);
-                                
+                       
                 if (pair.cells.push(triangle) === 2) {
                     
                     /*console.log(t, d.toString(), e.toString(), triangle.join(" | " ));
@@ -445,14 +454,20 @@
                     console.log(pair.cells.length, pair.cells[0] === pair.cells[1],
                                 pair.cells[0].join(" | "), pair.cells[1].join(" | "));
                     
-                    console.log(d, e, pair);
+                    console.log(d, e, pair);*/
                     
-                    console.log("testMerge",
-                               d.lefts.get(pair.cells[0]), d.rights.get(pair.cells[1]),
-                               e.lefts.get(pair.cells[1]), e.rights.get(pair.cells[0]));*/
+                    /*console.log("testMerge",
+                               d.lefts.get(pair.cells[0]).toString(), d.rights.get(pair.cells[1]).toString(), d.toString(),
+                               e.lefts.get(pair.cells[1]).toString(), e.rights.get(pair.cells[0]).toString(), e.toString());*/
                     
                     if (Geo.orientation(d.lefts.get(pair.cells[0]), d.rights.get(pair.cells[1]), d) != 1 &&
                         Geo.orientation(e.lefts.get(pair.cells[1]), e.rights.get(pair.cells[0]), e) != 1) {
+                        
+                        flag = false;
+                        
+                        /*console.log("merging", pair.cells[0].id, pair.cells[1].id);
+                        console.log("merging", pair.cells[0].join(" | "));
+                        console.log("merging", pair.cells[1].join(" | "));*/
                         
                         /*console.log(pair.cells[0].join(" | "));
                         console.log(pair.cells[1].join(" | "));*/
@@ -491,7 +506,7 @@
                         pair.cells = [triangle];
                         
                         //console.log(triangle.join(" | "));
-                        triangles.splice(triangles.indexOf(pair.cells[1]), 1);
+                        //triangles.splice(triangles.indexOf(pair.cells[1]), 1);
                         
                         new Drawing.Line(d, e).color("red").width(1).append();
                     }
@@ -507,11 +522,30 @@
                 
             }
             
-            triangles.push(triangle);
+            if (flag)
+                triangles.push(triangle);
+            
+            /*str = triangles[0].id;
+            for (n = 1; n < triangles.length; n++)
+                str += ", " + triangles[n].id;
+            console.log(str);*/
         }
         
-        for (i = 0; i < triangles.length; i++)
+        var x, y;
+        for (i = 0; i < triangles.length; i++) {
             new Drawing.Path(triangles[i]).fill("rgba(0,0,0,0)").close().append().draw();
+            
+            x = y = 0;
+            for (n = 0; n < triangles[i].length; n++) {
+                x += triangles[i][n].x;
+                y += triangles[i][n].y;
+            }
+            
+            x /= triangles[i].length;
+            y /= triangles[i].length;
+                
+            new Drawing.Point(x, y).data(i + " " + triangles[i].id).append();
+        }
         
         console.log(triangles);
         
