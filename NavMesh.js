@@ -127,35 +127,71 @@
         
     };
     
-    Base.prototype.meshIntersectRough = function(polygon) {
+    Base.prototype.meshIntersectRough = function(polygon, check) {
         
+        //A generator that returns one cell at a time
         var query = this.quadtree.queryRange(polygon.min.x, polygon.min.y,
                                              polygon.max.x, polygon.max.y, polygon.radius),
             
             meshes = [],
             
-            result;
+            result,
+            
+            i;
         
-        /* jshint -W084 */
+        //Grab the next cell of meshes (occurs due to MeshIntersectRoughMultiple)
         while (result = query.next().value)
-            meshes = meshes.concat(result);
+            
+            //Ignore cells we've already hit
+            if (result._meshIntersectRoughCheck !== check) {
+                
+                //Loop through each mesh
+                for (i = 0; i < result.length; i++)
+                    
+                    //Ignore meshes we've already hit
+                    if (result[i]._meshIntersectRoughCheck !== check) {
+                        
+                        //Add and mark the mesh
+                        meshes.push(result[i]);
+                        result[i]._meshIntersectRoughCheck = check;
+                    }
+                
+                //Mark the cell
+                result._meshIntersectRoughCheck = check;
+            }
         
         return meshes;
         
     };
     
-    Base.prototype.meshIntersectRoughMultiple = function(polygons) {
+    function doPolygonsIntersect(testMesh) {
+        return this.polygon.max.x < testMesh.min.x || this.polygon.min.x > testMesh.max.x ||
+            this.polygon.max.y < testMesh.min.y || this.polygon.min.y > testMesh.max.y;
+    }
+    
+    Base.prototype.meshIntersectMultiple = function(polygons) {
         
-        var meshes = [],
+        var meshes = [], tMeshes = [],
             
-            i;
+            i, n;
         
-        for (i = 0; i < polygons.length; i++)
-            meshes = meshes.concat(this.meshIntersectRough(polygons[i]));
+        //Loop through each polygon, adding cells/meshes one at a time
+        for (i = 0; i < polygons.length; i++) {
+            tMeshes = this.meshIntersectRough(polygons[i], Base.prototype.meshIntersectMultiple.checks);
+            
+            tMeshes.filter(doPolygonsIntersect, {polygon: polygons[i]});
+            
+            meshes = meshes.concat(tMeshes);
+        }
+        
+        //Inc our checker
+        this.meshIntersectMultiple.checks++;
         
         return meshes;
         
     };
+    
+    Base.prototype.meshIntersectMultiple.checks = 0;
     
     Base.prototype.testExisting = function () {
         
@@ -175,15 +211,18 @@
             
             i,
             
-            polygon = new ClipperLib.Paths();
+            tPolygon = new ClipperLib.Paths(), polygon;
         
         co.Clear();
         co.AddPath(object, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
-        co.Execute(polygon, this.radius);
+        co.Execute(tPolygon, this.radius);
         
-        polygon = polygon[0];
+        polygon = tPolygon[0];
+        polygon.holes = tPolygon.slice(1);
         
         reformPolygon(polygon);
+        for (i = 0; i < polygon.holes.length; i++)
+            reformPolygon(polygon.holes[i]);
         
         //Initialize the polygon's min and max
         polygon.min = {x: Infinity, y: Infinity};
@@ -508,12 +547,14 @@
             //Grab the meshes's we're going to be working on
             //  TODO: this should be reduced to interesecting polygons (such test is probably cheaper than rebuilding
             //        paths)
-            affectedMeshes = this.meshIntersectRoughMultiple(newPolygons);
+            affectedMeshes = this.meshIntersectMultiple(newPolygons);
             
             //Subtract the new polygons from the old mesh; store it in clippedMesh
             cpr.Clear();
             cpr.AddPaths(affectedMeshes, ClipperLib.PolyType.ptSubject, true);
             cpr.AddPaths(newPolygons, ClipperLib.PolyType.ptClip, true);
+            for (i = 0; i < newPolygons.length; i++)
+                cpr.AddPaths(newPolygons[i].holes, ClipperLib.PolyType.ptClip, true);
             cpr.Execute(ClipperLib.ClipType.ctDifference, clippedMesh,
                         ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
             
