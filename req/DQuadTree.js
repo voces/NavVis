@@ -122,14 +122,6 @@
             this.contents.push(item);
             item.cell = this;
             
-            this.length++;
-            
-            if (!noPropagate) {
-                cur = this;
-                while (cur = cur.parent)
-                    cur.length++;
-            }
-            
             return this.contents.length;
         }
         
@@ -142,6 +134,9 @@
             this.children[2].push(item);
         if (item.x + item.radius > this.x && item.y - item.radius < this.y)
             this.children[3].push(item);
+        
+        //Increase our length
+        this.length++;
         
     };
     

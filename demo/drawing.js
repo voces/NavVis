@@ -93,6 +93,12 @@
         return this;
     };
     
+    Path.prototype.width = function (width) {
+        this.path.setAttribute("stroke-width", width);
+        
+        return this;
+    };
+    
     Path.prototype.draw = function () {
         this.path.setAttribute("d", "M " + this.footprint.join(" L ") + (this.ended ? "Z" : ""));
         
