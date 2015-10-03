@@ -10,11 +10,20 @@
             cur = polygon[0].lefts.get(polygon),
             str;
         
+        if (typeof cur === "undefined")
+            console.log(polygon[0], polygon);
+        
         str = start.toString();
         while (cur !== start) {
             str += " -> " + cur.toString();
+            
+            if (typeof cur.lefts.get(polygon) === "undefined")
+                console.log(cur, "POLYGON:", polygon);
+            
             cur = cur.lefts.get(polygon);
         }
+        
+        str += " -> " + cur.toString();
         
         console.log("left: " + str);
         
@@ -25,11 +34,13 @@
             cur = cur.rights.get(polygon);
         }
         
+        str += " -> " + cur.toString();
+        
         console.log("right: " + str);
     }
     
     window.addEventListener("mousemove", function (e) {
-        pos.text("(" + e.clientX + ", " + e.clientY + ")");
+        if (pos) pos.text("(" + e.clientX + ", " + e.clientY + ")");
     });
     
     document.addEventListener("DOMContentLoaded", function () {

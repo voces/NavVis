@@ -1,7 +1,7 @@
 //2 3
 //1 0
 
-//TODO: Rest of directions in queryLine and .collapse
+//TODO: Finish .collapse
 
 (function (window) {
     "use strict";
@@ -26,7 +26,11 @@
             y: max ? (max.y || Infinity) : Infinity
         };
         
+        this.id = parent ? parent.id : "_dquadtree" + DQuadTree.count++;
+        
     }
+    
+    DQuadTree.count = 0;
     
     function clamp(value) {
         if (value > 10000) return 10000;
@@ -35,6 +39,57 @@
     }
     
     var colors = ["red", "orange", "yellow", "green", "blue", "indigo", "violet"];
+    
+    DQuadTree.prototype.printIds = function() {
+        
+        var i;
+        
+        if (this.contents)
+            for (i = 0; i < this.contents.length; i++)
+                console.log(this.contents[i].id, this.contents[i].colorName);
+        
+        else {
+            this.children[0].printAll();
+            this.children[1].printAll();
+            this.children[2].printAll();
+            this.children[3].printAll();
+        }
+        
+    };
+    
+    DQuadTree.prototype.printAll = function() {
+        
+        var i;
+        
+        if (this.contents)
+            for (i = 0; i < this.contents.length; i++) {
+                console.log(this.contents[i].id, this.contents[i].colorName);
+                polygonTrace(this.contents[i]);
+            }
+        else {
+            this.children[0].printAll();
+            this.children[1].printAll();
+            this.children[2].printAll();
+            this.children[3].printAll();
+        }
+        
+    };
+    
+    DQuadTree.prototype.drawAll = function() {
+        
+        var i;
+        
+        if (this.contents)
+            for (i = 0; i < this.contents.length; i++)
+                new Drawing.Path(this.contents[i]).fill(this.contents[i].color).close().width(0).append().draw().temp();
+        else {
+            this.children[0].drawAll();
+            this.children[1].drawAll();
+            this.children[2].drawAll();
+            this.children[3].drawAll();
+        }
+        
+    };
     
     DQuadTree.prototype.graph = function() {
         
@@ -97,6 +152,8 @@
             
             for (i = 0; i < this.contents.length; i++) {
                 
+                this.contents[i][this.id] = [];
+                
                 if (this.contents[i].x + this.contents[i].radius > this.x &&
                     this.contents[i].y + this.contents[i].radius > this.y)
                     this.children[0].push(this.contents[i], true);
@@ -120,7 +177,11 @@
         //No children, feed contents
         } else if (this.children.length === 0) {
             this.contents.push(item);
-            item.cell = this;
+            
+            if (item[this.id]) item[this.id].push(this);
+            else item[this.id] = [this];
+            
+            this.length++;
             
             return this.contents.length;
         }
@@ -142,27 +203,40 @@
     
     DQuadTree.prototype.remove = function (element) {
         
-        var index, cur;
+        var index, cur,
+            
+            removedList = [],
+            
+            i;
         
-        if (typeof element.cell !== "undefined" && (index = element.cell.contents.indexOf(element)) >= 0) {
-            element.cell.contents.splice(index, 1);
+        if (typeof element[this.id] !== "undefined") {// && (index = element.cell.contents.indexOf(element)) >= 0) {
             
-            element.cell.length--;
-            cur = element.cell;
-            while (cur = cur.parent)
-                cur.length--;
+            for (i = 0; i < element[this.id].length; i++) {
+                index = element[this.id][i].contents.indexOf(element);
+                
+                cur = element[this.id][i];
+                while (cur && removedList.indexOf(cur) === -1) {
+                    cur.length--;
+                    removedList.push(cur);
+                    
+                    cur = cur.parent;
+                }
+                
+                element[this.id][i].contents.splice(index, 1);
+                
+                if (element[this.id][i].parent && element[this.id][i].parent.length < element[this.id][i].density)
+                    element[this.id][i].parents[i].collapse();
+                
+            }
             
-            if (element.cell.parent && element.cell.parent.length < element.cell.density)
-                element.cell.parent.collapse();
-            
-            element.cell = undefined;
+            element[this.id] = undefined;
         }
         
     };
     
     DQuadTree.prototype.collapse = function () {
+        console.log("DQuadTree.collapse not written!")
     };
-    
     
     DQuadTree.prototype.queryPoint = function* (x, y, radius) {
         

@@ -11,8 +11,14 @@ svg {
 
 #pos {
     position: absolute;
-    bottom: 0.25em;
-    left: 0.25em;
+    bottom: 0.75em;
+    left: 0.75em;
+    font-weight: 900;
+    text-shadow:
+        -1px -1px 0 white,
+        1px -1px 0 white,
+        -1px 1px 0 white,
+        1px 1px 0 white;
 }
 
 .draggable {

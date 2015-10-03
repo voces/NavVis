@@ -13,10 +13,12 @@
         
         this.cells = [];
         
+        this.id = Pair.count++;
     }
     
     Pair.prototype = Object.create(Array.prototype);
     Pair.prototype.constructor = Pair;
+    Pair.count = 0;
     
     //Creates a new pair, adds it to the map, and returns it
     function pair(a, b) {
@@ -59,6 +61,21 @@
         
     }
     
+    function dropPair(a, b) {
+        
+        var tMap;
+        
+        if (a instanceof Pair) {
+            pairs.delete(a[0]);
+            pairs.delete(a[1]);
+        } else {
+            if (tMap = pairs.get(a)) tMap.delete(b);
+            if (tMap = pairs.get(b)) tMap.delete(a);
+        }
+        
+    }
+    
     window.getPair = getPair;
+    window.dropPair = dropPair;
     
 }(window));

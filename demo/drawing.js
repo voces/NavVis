@@ -8,6 +8,8 @@
         
         svg,
         
+        tempStuff = [],
+        
         movingLine = null,
         currentPath = null,
         
@@ -117,6 +119,10 @@
         return this;
     };
     
+    Path.prototype.temp = function() {
+        tempStuff.push(this);
+    };
+    
     function Line(start, end) {
         this.start = start;
         this.end = end;
@@ -158,6 +164,17 @@
         
         return this;
     };
+    
+    function clearTemp() {
+        
+        var i;
+        
+        for (i = 0; i < tempStuff.length; i++)
+            if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
+        
+        tempStuff = [];
+        
+    }
     
     function svgDown(e) {
         if (e.target === svg) return;
@@ -352,7 +369,8 @@
         onChange: onChange,
         Point: Point,
         Path: Path,
-        Line: Line
+        Line: Line,
+        clearTemp: clearTemp
     };
     
 }(window));

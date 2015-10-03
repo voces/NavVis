@@ -4,23 +4,28 @@
     
     var ClipperLib = window.ClipperLib,
         Geo = window.Geo,
-        PriorityQueue = window.PriorityQueue,
-        RecentArray = window.RecentArray,
+        //PriorityQueue = window.PriorityQueue,
+        //RecentArray = window.RecentArray,
         DQuadTree = window.DQuadTree,
         
         Drawing = window.Drawing,
         
+        randColor = window.randColor,
+        
         getPoint = window.getPoint,
         getPair = window.getPair,
+        dropPair = window.dropPair,
         
         earcut = window.earcut,
         
         co = new ClipperLib.ClipperOffset(2, 0.25),
         cpr = new ClipperLib.Clipper();
     
-    function distanceBetweenPoints(a, b) {
+    var curId = 0;
+    
+    /*function distanceBetweenPoints(a, b) {
         return Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
-    }
+    }*/
     
     function reformPolygon(polygon) {
         
@@ -107,7 +112,7 @@
         //bounds.radius = distanceBetweenPoints({x: bounds[0], y: bounds[1]}, bounds);
         
         this.mesh = [bounds];
-        this.quadtree = new DQuadTree(32, null, {x: bounds[0], y: bounds[1]}, {x: bounds[2], y: bounds[5]});
+        this.quadtree = new DQuadTree(32, null, bounds[0], bounds[2]);
         this.quadtree.push(bounds);
         
     }
@@ -164,25 +169,28 @@
         
     };
     
+    //Simple box testing
     function doPolygonsIntersect(testMesh) {
-        return this.polygon.max.x < testMesh.min.x || this.polygon.min.x > testMesh.max.x ||
-            this.polygon.max.y < testMesh.min.y || this.polygon.min.y > testMesh.max.y;
+        
+        if (this.polygon.max.x < testMesh.min.x || this.polygon.min.x > testMesh.max.x ||
+            this.polygon.max.y < testMesh.min.y || this.polygon.min.y > testMesh.max.y)
+            return false;
+        
+        return true;
+        
     }
     
     Base.prototype.meshIntersectMultiple = function(polygons) {
         
-        var meshes = [], tMeshes = [],
+        var meshes = [],
             
-            i, n;
+            i;
         
         //Loop through each polygon, adding cells/meshes one at a time
-        for (i = 0; i < polygons.length; i++) {
-            tMeshes = this.meshIntersectRough(polygons[i], Base.prototype.meshIntersectMultiple.checks);
-            
-            tMeshes.filter(doPolygonsIntersect, {polygon: polygons[i]});
-            
-            meshes = meshes.concat(tMeshes);
-        }
+        for (i = 0; i < polygons.length; i++)
+            meshes = meshes.concat(
+                this.meshIntersectRough(polygons[i], Base.prototype.meshIntersectMultiple.checks)
+                .filter(doPolygonsIntersect, {polygon: polygons[i]}));
         
         //Inc our checker
         this.meshIntersectMultiple.checks++;
@@ -194,10 +202,6 @@
     Base.prototype.meshIntersectMultiple.checks = 0;
     
     Base.prototype.testExisting = function () {
-        
-    };
-    
-    Base.prototype.addSegment = function (a, b) {
         
     };
     
@@ -380,19 +384,138 @@
         
     }
     
-    function clip(parent, holes) {
+    Base.prototype.mergeInPolygon = function(polygon, polygons, noAdd) {
+        
+        var addPolygon = true,
+            
+            pointA, pointB,
+            
+            vertices = polygon.slice(0),
+            
+            edge, tEdge,
+            
+            i, n;
+        
+        for (i = 0; i < vertices.length; i++) {
+            
+            //For easy access of each end point of the edge
+            pointA = vertices[i];
+            pointB = vertices[(i + 1) % vertices.length];
+            
+            //The edge (edge)
+            edge = getPair(pointA, pointB);
+            
+            //Push the triangle into the polygons that use the pair (edge), check if we now have both sides of said
+            //  edge
+            if ((noAdd && edge.cells.length === 2) || (!noAdd && edge.cells.push(polygon) === 2)) {
+                
+                //if (!noAdd) console.log("pushed", polygon.id, polygon.color);
+                
+                /*if (edge.cells[0] === polygon) {
+                    console.log("check1", edge.cells[1].id, edge.cells[1].colorName);
+                    window.polygonTrace(edge.cells[1]);
+                } else {
+                    console.log("check0", edge.cells[0].id, edge.cells[0].colorName);
+                    window.polygonTrace(edge.cells[0]);
+                }*/
+                
+                //Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
+                if (Geo.orientation(pointA.lefts.get(edge.cells[0]), pointA.rights.get(edge.cells[1]), pointA) === 2 &&
+                    Geo.orientation(pointB.lefts.get(edge.cells[1]), pointB.rights.get(edge.cells[0]), pointB) === 2) {
+                    
+                    //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
+                    polygon = mergeSimple(edge.cells[0], edge.cells[1], pointA, pointB);
+                    
+                    //Loop through the points that make up the new cell
+                    for (n = 0; n < edge.cells[1].length; n++) {
+                        
+                        //Create new lefts for the points relative to the primary cell
+                        if (edge.cells[1][n] !== pointA)
+                            edge.cells[1][n].lefts.set(polygon, edge.cells[1][n].lefts.get(edge.cells[1]));
+                        
+                        //Create new rights for the points relative to the primary cell
+                        if (edge.cells[1][n] !== pointB)
+                            edge.cells[1][n].rights.set(polygon, edge.cells[1][n].rights.get(edge.cells[1]));
+                        
+                        //Delete lefts/rights for the points relative to the secondary cell
+                        if (edge.cells[1] !== polygon) {
+                            edge.cells[1][n].lefts.delete(edge.cells[1]);
+                            edge.cells[1][n].rights.delete(edge.cells[1]);
+                        }
+                        
+                    }
+                    
+                    //Loop through the points that make up the new cell
+                    for (n = 0; n < edge.cells[1].length; n++) {
+                        
+                        //Change the edge on the 
+                        tEdge = getPair(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
+                        
+                        if (edge === tEdge) continue;
+                        
+                        if (tEdge.cells[0] === edge.cells[1])
+                            tEdge.cells[0] = polygon;
+                        else if (tEdge.cells[1] === edge.cells[1])
+                            tEdge.cells[1] = polygon;
+                        
+                    }
+                    
+                    //The active triangle we're working on was already added to another, meaning we are actually
+                    //  doing a second merging, meaning we're merging two existing polygons... so remove one
+                    if (!addPolygon) polygons.splice(polygons.indexOf(edge.cells[1]), 1);
+                    
+                    //This pair should actually be gone now...
+                    edge.cells = [];
+                    
+                    dropPair(edge);
+                    
+                    //Since the triangle was merged with an existing one, don't add it
+                    addPolygon = false;
+                    
+                }
+                
+            }
+            
+        }
+        
+        //If the polygon was merged previously and not merged this time, update it and be done
+        if (noAdd && addPolygon) {
+            
+            if (typeof polygon[this.quadtree.id] !== "undefined") {
+                this.quadtree.remove(polygon);
+                calcPolygonStats(polygon);
+                this.quadtree.push(polygon);
+            }
+            
+        //If the polygon was not merged
+        } else if (addPolygon) {
+            
+            //If the polygon was not merged previously, add it to the list and be done
+            if (!noAdd) polygons.push(polygon);
+            
+            //If the polygon was merged previously, update it and be done
+            else if (typeof polygon[this.quadtree.id] !== "undefined") {
+                this.quadtree.remove(polygon);
+                calcPolygonStats(polygon);
+                this.quadtree.push(polygon);
+            }
+            
+        //If the polygon was merged
+        } else this.mergeInPolygon(polygon, polygons, true);
+        
+    };
+    
+    Base.prototype.clip = function(parent, holes) {
         
         var list = [], indicies = [],
             
-            trianglesRaw, triangles = [],
+            trianglesRaw, polygons = [],
             
-            a, b, c, triangle, addTriangle,
+            a, b, c, triangle,
             
-            edges, edge, d, e,
+            color,
             
-            i, n, t,
-            
-            str;
+            i, n;
         
         //Push all parents onto the list first
         for (i = 0; i < parent.length; i++) {
@@ -423,9 +546,6 @@
             //Build it
             triangle = [a, b, c];
             
-            //By default we'll add the triangle
-            addTriangle = true;
-            
             //Fill in the "left" point of each triangle (from looking outside)
             a.lefts.set(triangle, b);
             b.lefts.set(triangle, c);
@@ -436,89 +556,36 @@
             b.rights.set(triangle, a);
             c.rights.set(triangle, b);
             
-            //Build our three test segments
-            edges = [[a, b], [b, c], [c, a]];
+            color = randColor();
             
-            for (t = 0; t < 3; t++) {
-                
-                //For easy access of each end point of the edge
-                d = edges[t][0];
-                e = edges[t][1];
-                
-                //The edge (edge)
-                edge = getPair(d, e);
-                
-                //Push the triangle into the polygons that use the pair (edge), check if we now have both sides of said
-                //  edge
-                if (edge.cells.push(triangle) === 2) {
-                    
-                    //Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
-                    if (Geo.orientation(d.lefts.get(edge.cells[0]), d.rights.get(edge.cells[1]), d) != 1 &&
-                        Geo.orientation(e.lefts.get(edge.cells[1]), e.rights.get(edge.cells[0]), e) != 1) {
-                        
-                        //Loop through the points that make up the new cell
-                        for (n = 0; n < edge.cells[1].length; n++) {
-                            
-                            //Create new lefts for the points relative to the primary cell
-                            if (edge.cells[1][n] !== edge[1])
-                                edge.cells[1][n].lefts.set(edge.cells[0], edge.cells[1][n].lefts.get(edge.cells[1]));
-                            
-                            //Create new rights for the points relative to the primary cell
-                            if (edge.cells[1][n] !== edge[0])
-                                edge.cells[1][n].rights.set(edge.cells[0], edge.cells[1][n].rights.get(edge.cells[1]));
-                            
-                            //Delete lefts/rights for the points relative to the secondary cell
-                            edge.cells[1][n].lefts.delete(edge.cells[1]);
-                            edge.cells[1][n].rights.delete(edge.cells[1]);
-                            
-                        }
-                        
-                        //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
-                        triangle = mergeSimple(edge.cells[0], edge.cells[1], d, e);
-                        
-                        //This looks wrong? Points cell's list shouldn't be set like this
-                        /*d.cells = [triangle];
-                        e.cells = [triangle];*/
-                        
-                        //The active triangle we're working on was already added to another, meaning we are actually
-                        //  doing a second merging, meaning we're merging two existing polygons... so remove one
-                        if (!addTriangle) triangles.splice(triangles.indexOf(edge.cells[1]), 1);
-                        
-                        //This pair should actually be gone now...
-                        edge.cells = [triangle];
-                        
-                        //Since the triangle was merged with an existing one, don't add it
-                        addTriangle = false;
-                        
-                    }
-                
-                //Not merging this triangle, add the pair to the list of segments on the point
-                //  Probably don't need to do this?
-                } else {
-                    
-                    d.segments.add(edge);
-                    e.segments.add(edge);
-                    
-                }
-                
-            }
+            triangle.id = curId++;
+            triangle.colorName = color[0];
+            triangle.color = color[1];
             
-            //We're done with segments! add the triangle unless it's been merged into another polygon
-            if (addTriangle) triangles.push(triangle);
+            /*console.log(triangle.id, triangle.colorName);
+            polygonTrace(triangle);*/
+            
+            new Drawing.Path(triangle).fill(triangle.color).close().width(0).append().draw().temp();
+            
+            //Merge in the new triangle
+            this.mergeInPolygon(triangle, polygons);
             
         }
         
-        //For display purposes, draw all the triangles
-        for (i = 0; i < triangles.length; i++)
-            new Drawing.Path(triangles[i]).fill("rgba(0,0,0,0)").close().width(1).color("blue").append().draw();
+        return polygons;
         
-    }
+    };
     
     Base.prototype.update = function () {
         
+        Drawing.clearTemp();
+        
         var oldLength, newPolygons, affectedMeshes,
             
-            clippedMesh = [], holes, parent,
+            clippedMesh = [], holes = [], parent,
+            newMesh,
+            
+            index, tPair,
             
             i, n;
         
@@ -549,6 +616,33 @@
             //        paths)
             affectedMeshes = this.meshIntersectMultiple(newPolygons);
             
+            //Loop through all affected meshes
+            for (i = 0; i < affectedMeshes.length; i++) {
+                
+                //Remove the mesh from the quadtree
+                this.quadtree.remove(affectedMeshes[i]);
+                
+                //Loop through all points on the mesh
+                for (n = 0; n < affectedMeshes[i].length; n++) {
+                    
+                    //Remove the mesh from the point's cells list
+                    index = affectedMeshes[i][n].cells.indexOf(affectedMeshes[i]);
+                    if (index >= 0) affectedMeshes[i][n].cells.splice(index, 1);
+                    
+                    //Grab the pair between the point and the next point
+                    tPair = getPair(affectedMeshes[i][n], affectedMeshes[i][(n + 1) % affectedMeshes[i].length]);
+                    
+                    //Remove the mesh from the pair's cells list
+                    index = tPair.cells.indexOf(affectedMeshes[i]);
+                    if (index >= 0) tPair.cells.splice(index, 1);
+                    
+                    //Remove the lefts/rights associated with the mesh from the point
+                    affectedMeshes[i][n].lefts.delete(affectedMeshes[i]);
+                    affectedMeshes[i][n].rights.delete(affectedMeshes[i]);
+                }
+                
+            }
+            
             //Subtract the new polygons from the old mesh; store it in clippedMesh
             cpr.Clear();
             cpr.AddPaths(affectedMeshes, ClipperLib.PolyType.ptSubject, true);
@@ -559,27 +653,51 @@
                         ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
             
             //Loop through all the returned meshes; clip them one at a time
-            for (i = 0; i < clippedMesh.length; i++) {
+            for (i = 0; i < clippedMesh.length; i++)
                 
                 //Not a hole
                 if (ClipperLib.Clipper.Orientation(clippedMesh[i])) {
                     
                     //Calculate the previous
-                    if (parent) clip(parent, holes);
+                    if (parent) {
+                        newMesh = this.clip(parent, holes);
+                        
+                        for (n = 0; n < newMesh.length; n++) {
+                            if (typeof newMesh[i] === "undefined") console.error("THE FUCK?", newMesh)
+                                              
+                            calcPolygonStats(newMesh[i]);
+                            this.quadtree.push(newMesh[i]);
+                        }
+                        
+                    }
                     
                     parent = clippedMesh[i];
                     holes = [];
                     
                 //A hole, just add to list and continue
                 } else holes.push(clippedMesh[i]);
-                
+             
+            //Clip in the last parent
+            newMesh = this.clip(parent, holes);
+            
+            for (i = 0; i < newMesh.length; i++) {
+                calcPolygonStats(newMesh[i]);
+                this.quadtree.push(newMesh[i]);
             }
             
-            //Clip in the last parent
-            clip(parent, holes);
+            this.newStatics = [];
             
-            //TODO: affectedMeshes should be removed from the quadtree and the new meshes should be added
         }
+        
+        affectedMeshes = this.meshIntersectMultiple([
+            {min: {x: 0, y: 0}, max: {x: window.innerWidth, y: window.innerHeight}, radius: 0}]);
+        
+        //For display purposes, draw all the triangles
+        for (i = 0; i < affectedMeshes.length; i++)
+            new Drawing.Path(affectedMeshes[i]).fill("none").close().width(5).append().draw().temp();
+        
+        //alert();
+        Drawing.clearTemp(); this.quadtree.drawAll();
         
     };
     
@@ -663,7 +781,6 @@
                 polygon.baseStati[i] = 2;
                 
             }
-            
         }
         
     };

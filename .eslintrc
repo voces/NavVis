@@ -59,6 +59,7 @@
     "no-new-object": 2,                    // disallow use of the Object constructor
     "object-curly-spacing": [2, "never"],  // require or disallow padding inside curly braces (off by default)
     "semi": 2,                             // require or disallow use of semicolons instead of ASI
+    "no-unused-vars": [1, {"vars": "all", "args": "after-used"}],
 
 
     // ECMAScript 6
