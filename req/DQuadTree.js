@@ -6,6 +6,11 @@
 (function (window) {
     "use strict";
     
+    var Drawing = window.Drawing,
+        direction = window.direction,
+        pointListToString = window.pointListToString,
+        drawSegment = window.drawSegment;
+    
     function DQuadTree(density, parent, min, max) {
         this.density = density;
         this.parent = parent;
@@ -44,9 +49,8 @@
         
         var i;
         
-        if (this.contents)
-            for (i = 0; i < this.contents.length; i++)
-                console.log(this.contents[i].id, this.contents[i].colorName);
+        if (this.contents) for (i = 0; i < this.contents.length; i++)
+            console.log(this.contents[i].id, this.contents[i].colorName);
         
         else {
             this.children[0].printAll();
@@ -61,11 +65,11 @@
         
         var i;
         
-        if (this.contents)
-            for (i = 0; i < this.contents.length; i++) {
-                console.log(this.contents[i].id, this.contents[i].colorName);
-                polygonTrace(this.contents[i]);
-            }
+        if (this.contents) for (i = 0; i < this.contents.length; i++)
+            console.log(this.contents[i].id, this.contents[i].colorName, direction(this.contents[i]),
+                        pointListToString(this.contents[i]));
+                //polygonTrace(this.contents[i]);
+            
         else {
             this.children[0].printAll();
             this.children[1].printAll();
@@ -80,8 +84,10 @@
         var i;
         
         if (this.contents)
-            for (i = 0; i < this.contents.length; i++)
+            for (i = 0; i < this.contents.length; i++) {
                 new Drawing.Path(this.contents[i]).fill(this.contents[i].color).close().width(0).append().draw().temp();
+                new Drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
+            }
         else {
             this.children[0].drawAll();
             this.children[1].drawAll();
@@ -95,7 +101,7 @@
         
         var cells = [[this, 0]], cell;
         
-        while (cell = cells.pop()) {
+        while (cell = cells.pop())
             if (cell[0].children.length !== 0) {
                 
                 drawSegment(
@@ -121,14 +127,12 @@
                     [cell[0].children[2], cell[1] + 1],
                     [cell[0].children[3], cell[1] + 1]);
             }
-            
-        }
         
     };
     
-    DQuadTree.prototype.push = function (item, noPropagate) {
+    DQuadTree.prototype.push = function (item) {
         
-        var cur, i;
+        var i;
         
         //We've reached density; empty the contents and spill into children
         if (this.contents && this.contents.length === this.density) {
@@ -145,10 +149,14 @@
             this.y /= this.contents.length;
             
             //Create four children cells (common intersection at the average, as treated below)
-            this.children[0] = new DQuadTree(this.density, this, {x: this.x, y: this.y}, this.max);
-            this.children[1] = new DQuadTree(this.density, this, {x: this.min.x, y: this.y}, {x: this.x, y: this.max.y});
-            this.children[2] = new DQuadTree(this.density, this, this.min, {x: this.x, y: this.y});
-            this.children[3] = new DQuadTree(this.density, this, {x: this.x, y: this.min.y}, {x: this.max.x, y: this.y});
+            this.children[0] = new DQuadTree(this.density, this, {x: this.x, y: this.y},
+                                             this.max);
+            this.children[1] = new DQuadTree(this.density, this, {x: this.min.x, y: this.y},
+                                             {x: this.x, y: this.max.y});
+            this.children[2] = new DQuadTree(this.density, this, this.min,
+                                             {x: this.x, y: this.y});
+            this.children[3] = new DQuadTree(this.density, this, {x: this.x, y: this.min.y},
+                                             {x: this.max.x, y: this.y});
             
             for (i = 0; i < this.contents.length; i++) {
                 
@@ -225,7 +233,7 @@
                 element[this.id][i].contents.splice(index, 1);
                 
                 if (element[this.id][i].parent && element[this.id][i].parent.length < element[this.id][i].density)
-                    element[this.id][i].parents[i].collapse();
+                    element[this.id][i].parent.collapse();
                 
             }
             
@@ -235,7 +243,7 @@
     };
     
     DQuadTree.prototype.collapse = function () {
-        console.log("DQuadTree.collapse not written!")
+        console.log("DQuadTree.collapse not written!");
     };
     
     DQuadTree.prototype.queryPoint = function* (x, y, radius) {
@@ -245,11 +253,10 @@
         
         //Loop while non-empty
         /* jshint -W084 */
-        while (cell = cells.pop()) {
+        while (cell = cells.pop())
             
             //No children; return self
-            if (cell.children.length === 0)
-                yield cell.contents;
+            if (cell.children.length === 0) yield cell.contents;
             
             //We have children; add them to cells and try again
             else {
@@ -260,8 +267,6 @@
                 if (x - radius >= cell.x && y - radius <= cell.y) cells.push(cell.children[3]);
                 
             }
-            
-        }
         
     };
     
@@ -272,11 +277,10 @@
         
         //Loop while non-empty
         /* jshint -W084 */
-        while (cell = cells.pop()) {
+        while (cell = cells.pop())
             
             //No children; return self
-            if (cell.children.length === 0)
-                yield cell.contents;
+            if (cell.children.length === 0) yield cell.contents;
             
             //We have children; add them to cells and try again
             else {
@@ -287,8 +291,6 @@
                 if (maxX + radius >= cell.x && minY - radius <= cell.y) cells.push(cell.children[3]);
                 
             }
-            
-        }
         
     };
     

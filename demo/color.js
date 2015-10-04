@@ -111,12 +111,19 @@
         },
     };
     
-    window.randColor = function() {
+    function randColor() {
         
         var r = Math.floor(Math.random() * colors.length);
         
         return [colors[r], window.Color[colors[r]]()];
         
     };
+    
+    function indexColor(index) {
+        return [colors[index % colors.length], window.Color[colors[index % colors.length]]()];
+    }
+    
+    window.Color.randColor = randColor;
+    window.Color.indexColor = indexColor;
     
 }(window));

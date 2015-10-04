@@ -15,162 +15,168 @@
         
         moving = false, currentTarget = null;
     
-    function Point(x, y, color) {
-        this.x = x;
-        this.y = y;
+    class Element {
         
-        this.circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        this.circle.obj = this;
+        constructor() {
+            this.element = null;
+        }
         
-        this.circle.setAttribute("r", 5);
-        this.circle.setAttribute("cx", x);
-        this.circle.setAttribute("cy", y);
+        append() {
+            if (this.element) svg.appendChild(this.element);
+
+            return this;
+        }
         
-        if (color) this.circle.style.fill = color;
+        detach() {
+            if (this.element) svg.removeChild(this.element);
+
+            return this;
+        }
         
-        //this.circle.addEventListener("click", this.onClick.bind(this));
+        temp() {
+            tempStuff.push(this);
+        }
+        
+        stroke(color) {
+            if (this.element) this.element.setAttribute("stroke", color);
+
+            return this;
+        }
+        
+        fill(color) {
+            if (this.element) this.element.setAttribute("fill", color);
+
+            return this;
+        }
+        
+        width(width) {
+            if (this.element) this.element.setAttribute("stroke-width", width);
+
+            return this;
+        }
+        
     }
     
-    Point.prototype.data = function(data) {
-        this.circle.setAttribute("data", data);
-        return this;
-    };
-    
-    Point.prototype.draw = function () {
-        this.circle.setAttribute("cx", this.x);
-        this.circle.setAttribute("cy", this.y);
-    };
-    
-    Point.prototype.append = function () {
-        svg.appendChild(this.circle);
+    class Point extends Element {
         
-        return this;
-    };
-    
-    Point.prototype.detach = function () {
-        svg.removeChild(this.circle);
+        constructor(x, y, color) {
+            super();
+            
+            this.x = x;
+            this.y = y;
+
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            this.element.obj = this;
+
+            this.element.setAttribute("r", 5);
+            this.element.setAttribute("cx", x);
+            this.element.setAttribute("cy", y);
+
+            if (color) this.element.style.fill = color;
+        }
         
-        return this;
-    };
-    
-    Point.prototype.toString = function () {
-        return this.x + ", " + this.y;
-    };
-    
-    Point.prototype.distanceToPoint = function (point) {
-        var deltaX = this.x - point.x,
-            deltaY = this.y - point.y;
+        draw() {
+            this.element.setAttribute("cx", this.x);
+            this.element.setAttribute("cy", this.y);
+        }
         
-        return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    };
-    
-    function Path(footprint) {
-        this.footprint = footprint;
-        this.ended = false;
+        toString() {
+            return this.x + ", " + this.y;
+        }
         
-        this.path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        this.path.obj = this;
+        distanceToPoint(point) {
+            var deltaX = this.x - point.x,
+                deltaY = this.y - point.y;
+
+            return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        }
         
-        this.path.setAttribute("stroke", "black");
-        this.path.setAttribute("stroke-width", "3");
-        this.path.setAttribute("fill", "rgba(0, 0, 0, 0.1");
-        this.draw();
     }
     
-    Path.prototype.close = function () {
-        this.ended = true;
+    class Path extends Element {
         
-        return this;
-    };
-    
-    Path.prototype.append = function () {
-        svg.appendChild(this.path);
+        constructor(footprint) {
+            super();
+            
+            this.footprint = footprint;
+            this.ended = false;
+
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            this.element.obj = this;
+
+            this.element.setAttribute("stroke", "black");
+            this.element.setAttribute("stroke-width", "3");
+            this.element.setAttribute("fill", "rgba(0, 0, 0, 0.1");
+            this.draw();
+        }
         
-        return this;
-    };
-    
-    Path.prototype.detach = function () {
-        svg.removeChild(this.path);
+        close() {
+            this.ended = true;
+
+            return this;
+        }
         
-        return this;
-    };
-    
-    Path.prototype.width = function (width) {
-        this.path.setAttribute("stroke-width", width);
+        draw() {
+            this.element.setAttribute("d", "M " + this.footprint.join(" L ") + (this.ended ? "Z" : ""));
+
+            return this;
+        }
         
-        return this;
-    };
-    
-    Path.prototype.draw = function () {
-        this.path.setAttribute("d", "M " + this.footprint.join(" L ") + (this.ended ? "Z" : ""));
-        
-        return this;
-    };
-    
-    Path.prototype.fill = function(color) {
-        this.path.setAttribute("fill", color);
-        
-        return this;
-    };
-    
-    Path.prototype.color = function (color) {
-        this.path.setAttribute("stroke", color);
-        
-        return this;
-    };
-    
-    Path.prototype.temp = function() {
-        tempStuff.push(this);
-    };
-    
-    function Line(start, end) {
-        this.start = start;
-        this.end = end;
-        
-        this.path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        this.path.obj = this;
-        
-        this.path.setAttribute("stroke", "black");
-        this.path.setAttribute("stroke-width", "3");
-        this.draw();
     }
     
-    Line.prototype.color = function (color) {
-        this.path.setAttribute("stroke", color);
+    class Line extends Element {
         
-        return this;
-    };
+        constructor(start, end) {
+            super();
+            
+            this.start = start;
+            this.end = end;
+
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            this.element.obj = this;
+
+            this.element.setAttribute("stroke", "black");
+            this.element.setAttribute("stroke-width", "3");
+            this.draw();
+        }
+        
+        draw() {
+            this.element.setAttribute("d", "M" +
+                                      this.start.x + " " + this.start.y + " L " +
+                                      this.end.x + " " + this.end.y);
+
+            return this;
+        }
+        
+    }
     
-    Line.prototype.append = function () {
-        svg.appendChild(this.path);
+    class Text extends Element {
         
-        return this;
-    };
-    
-    Line.prototype.detach = function () {
-        svg.removeChild(this.path);
+        constructor(text, x, y) {
+            super();
+            
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            
+            this.element.textContent = text;
+            
+            this.append();
+            
+            this.element.setAttribute("x", (x || window.innerWidth / 2) - this.element.offsetWidth / 2);
+            this.element.setAttribute("y", (y || window.innerHeight / 2) + this.element.offsetHeight / 2);
+            
+            this.detach();
+            
+        }
         
-        return this;
-    };
-    
-    Line.prototype.draw = function () {
-        this.path.setAttribute("d", "M" + this.start.x + " " + this.start.y + " L " + this.end.x + " " + this.end.y);
-        
-        return this;
-    };
-    
-    Line.prototype.width = function (width) {
-        this.path.setAttribute("stroke-width", width);
-        
-        return this;
-    };
+    }
     
     function clearTemp() {
         
         var i;
         
         for (i = 0; i < tempStuff.length; i++)
-            if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
+            tempStuff[i].detach();
+            //if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
         
         tempStuff = [];
         
@@ -370,6 +376,7 @@
         Point: Point,
         Path: Path,
         Line: Line,
+        Text: Text,
         clearTemp: clearTemp
     };
     

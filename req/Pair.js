@@ -5,6 +5,7 @@
     //A mapping of all pairs
     //  WARNING: Maps do not automatically garbage collect!
     var pairs = new Map();
+    var pairsArray = [];
     
     function Pair(a, b) {
         
@@ -14,6 +15,9 @@
         this.cells = [];
         
         this.id = Pair.count++;
+        
+        pairsArray.push(this);
+        
     }
     
     Pair.prototype = Object.create(Array.prototype);
@@ -66,8 +70,8 @@
         var tMap;
         
         if (a instanceof Pair) {
-            pairs.delete(a[0]);
-            pairs.delete(a[1]);
+            if (tMap = pairs.get(a[0])) tMap.delete(a[1]);
+            if (tMap = pairs.get(a[1])) tMap.delete(a[0]);
         } else {
             if (tMap = pairs.get(a)) tMap.delete(b);
             if (tMap = pairs.get(b)) tMap.delete(a);
@@ -75,7 +79,12 @@
         
     }
     
+    function getPairById(id) {
+        return pairsArray[id];
+    }
+    
     window.getPair = getPair;
+    window.getPairById = getPairById;
     window.dropPair = dropPair;
     
 }(window));
