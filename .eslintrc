@@ -31,6 +31,8 @@
     // Possible Errors
     "no-extra-semi": 1,            // disallow unnecessary semicolons
     "no-inner-declarations": 2,    // disallow function or variable declarations in nested blocks
+    "no-console": 1,
+    "no-cond-assign": 0,
 
 
     // Best Practices
@@ -60,9 +62,12 @@
     "object-curly-spacing": [2, "never"],  // require or disallow padding inside curly braces (off by default)
     "semi": 2,                             // require or disallow use of semicolons instead of ASI
     "no-unused-vars": [1, {"vars": "all", "args": "after-used"}],
+    "no-trailing-spaces": [1, { "skipBlankLines": true }],
+    "new-cap": 1,
 
 
     // ECMAScript 6
+    "no-var": 2,
 
 
     // Legacy
