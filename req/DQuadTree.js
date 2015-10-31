@@ -1,8 +1,6 @@
 //2 3
 //1 0
 
-//TODO: Finish .collapse
-
 (function (window) {
     "use strict";
 
@@ -427,7 +425,7 @@
             while (cell = cells.pop())
 
                 //Children, push those that apply (with the nearest pushed last)
-                if (cell.children.length === 0) {
+                if (cell.children.length > 0) {
 
                     testAngle = Math.atan2(cell.y - y1, cell.x - x1);
 
@@ -460,7 +458,7 @@
             while (cell = cells.pop())
 
                 //Children, push those that apply (with the nearest pushed last)
-                if (cell.children.length === 0) {
+                if (cell.children.length > 0) {
 
                     testAngle = Math.atan2(cell.y - y1, cell.x - x1);
 

@@ -319,7 +319,8 @@
 
                         //Put to end of recent
                         if (t !== recent.length - 1) recent.push(recent.splice(t, 1)[0]);
-						return recent[recent.length - 1];
+
+                        return recent[recent.length - 1];
                     }
             }
 
