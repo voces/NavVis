@@ -14,9 +14,9 @@
 
         Color = window.Color,
 
-        getPoint = window.getPoint,
-        getPair = window.getPair,
-        dropPair = window.dropPair,
+        PointSet = window.PointSet,
+        Point = window.Point,
+        EdgeSet = window.EdgeSet,
 
         earcut = window.earcut,
 
@@ -28,13 +28,6 @@
     /*function distanceBetweenPoints(a, b) {
         return Math.sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
     }*/
-
-    function reformPolygon(polygon) {
-
-        for (let i = 0; i < polygon.length; i++)
-            polygon[i] = getPoint(polygon[i].x, polygon[i].y);
-
-    }
 
     function calcPolygonStats(polygon) {
 
@@ -100,6 +93,9 @@
 
         //A list of all concave polygons in the graph (inverted space from this.polygons)
 
+        this.pointSet = new PointSet();
+        this.edgeSet = new EdgeSet();
+
         bounds = this.generateBounds();
 
         //bounds.x = (bounds[0] + bounds[2]) / 2;
@@ -117,15 +113,22 @@
     Base.prototype.generateBounds = function() {
 
         let polygon = [
-            getPoint(this.navmesh.minX + this.radius, this.navmesh.minY + this.radius),
-            getPoint(this.navmesh.maxX - this.radius, this.navmesh.minY + this.radius),
-            getPoint(this.navmesh.maxX - this.radius, this.navmesh.maxY - this.radius),
-            getPoint(this.navmesh.minX + this.radius, this.navmesh.maxY - this.radius)
+            this.pointSet.getPoint(this.navmesh.minX + this.radius, this.navmesh.minY + this.radius),
+            this.pointSet.getPoint(this.navmesh.maxX - this.radius, this.navmesh.minY + this.radius),
+            this.pointSet.getPoint(this.navmesh.maxX - this.radius, this.navmesh.maxY - this.radius),
+            this.pointSet.getPoint(this.navmesh.minX + this.radius, this.navmesh.maxY - this.radius)
         ];
 
         calcPolygonStats(polygon);
 
         return polygon;
+
+    };
+
+    Base.prototype.reformPolygon = function(polygon) {
+
+        for (let i = 0; i < polygon.length; i++)
+            polygon[i] = this.pointSet.getPoint(polygon[i].x, polygon[i].y);
 
     };
 
@@ -163,8 +166,6 @@
                 result.meshIntersectRoughCheck = check;
             }
 
-        console.log(meshes);
-
         return meshes;
 
     };
@@ -173,12 +174,9 @@
     function doPolygonsIntersect(testMesh) {
 
         if (this.polygon.max.x < testMesh.min.x || this.polygon.min.x > testMesh.max.x ||
-            this.polygon.max.y < testMesh.min.y || this.polygon.min.y > testMesh.max.y) {
-            console.log("filterOut", this.polygon, testMesh);
+            this.polygon.max.y < testMesh.min.y || this.polygon.min.y > testMesh.max.y)
             return false;
-        }
 
-        console.log("filterPass", this.polygon, testMesh);
         return true;
 
     }
@@ -223,9 +221,9 @@
         polygon = tPolygon[0];
         polygon.holes = tPolygon.slice(1);
 
-        reformPolygon(polygon);
+        this.reformPolygon(polygon);
         for (let i = 0; i < polygon.holes.length; i++)
-            reformPolygon(polygon.holes[i]);
+            this.reformPolygon(polygon.holes[i]);
 
         //Initialize the polygon's min and max
         polygon.min = {x: Infinity, y: Infinity};
@@ -402,59 +400,56 @@
 
     function convexTest(pointA, pointB, edge) {
 
-        /*console.log("\t\t\t", goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length),
-                    goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length));*/
+        /*console.log("\t\t\t", goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB),
+            edge.cells[0].length), goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB),
+            edge.cells[1].length));*/
 
         if (goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length))
 
-            if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length)) {
-                /*console.log("\t\t\t", "tt",
-                        rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1], pointA.toString()), pointA.toString(),
-                        geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA));
-                console.log("\t\t\t", "tt",
-                        rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0], pointB.toString()), pointB.toString(),
-                        geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB));*/
+            if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length))
+                /*console.log("\t\t\t", "tt", rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1],
+                    pointA.toString()), pointA.toString(), geo.orientation(rPoint(edge.cells[0], pointA),
+                    lPoint(edge.cells[1], pointA), pointA));
+                console.log("\t\t\t", "tt", rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0],
+                    pointB.toString()), pointB.toString(), geo.orientation(rPoint(edge.cells[1], pointB),
+                    lPoint(edge.cells[0], pointB), pointB));*/
 
                 return (geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA) !== 1 &&
                         geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB) !== 1);
-            }
 
-            else {
-                /*console.log("\t\t\t", "tf",
-                        rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1], pointA).toString(), pointA.toString(),
-                        geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA));
-                console.log("\t\t\t", "tf",
-                            rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0], pointB).toString(), pointB.toString(),
-                            geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB));*/
+            else
+                /*console.log("\t\t\t", "tf", rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1],
+                    pointA).toString(), pointA.toString(), geo.orientation(rPoint(edge.cells[0], pointA),
+                    lPoint(edge.cells[1], pointA), pointA));
+                console.log("\t\t\t", "tf", rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0],
+                    pointB).toString(), pointB.toString(), geo.orientation(rPoint(edge.cells[1], pointB),
+                    lPoint(edge.cells[0], pointB), pointB));*/
 
                 return (geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA) !== 1 &&
                         geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB) !== 1);
-            }
 
-        else if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length)) {
+        else if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length))
             /*console.log(edge.cells[1].indexOf(pointA), (edge.cells[1].indexOf(pointA) + 1) % edge.cells[1].length);
-            console.log("\t\t\t", "ft",
-                        rPoint(edge.cells[1], pointA).toString(), lPoint(edge.cells[0], pointA).toString(), pointA.toString(),
-                        geo.orientation(rPoint(edge.cells[1], pointA), lPoint(edge.cells[0], pointA), pointA));
-            console.log("\t\t\t", "ft",
-                        rPoint(edge.cells[0], pointB).toString(), lPoint(edge.cells[1], pointB).toString(), pointB.toString(),
-                        geo.orientation(rPoint(edge.cells[0], pointB), lPoint(edge.cells[1], pointB), pointB));*/
+            console.log("\t\t\t", "ft", rPoint(edge.cells[1], pointA).toString(), lPoint(edge.cells[0],
+                pointA).toString(), pointA.toString(), geo.orientation(rPoint(edge.cells[1], pointA),
+                lPoint(edge.cells[0], pointA), pointA));
+            console.log("\t\t\t", "ft", rPoint(edge.cells[0], pointB).toString(), lPoint(edge.cells[1],
+                pointB).toString(), pointB.toString(), geo.orientation(rPoint(edge.cells[0], pointB),
+                lPoint(edge.cells[1], pointB), pointB));*/
 
             return (geo.orientation(rPoint(edge.cells[1], pointA), lPoint(edge.cells[0], pointA), pointA) !== 1 &&
                     geo.orientation(rPoint(edge.cells[0], pointB), lPoint(edge.cells[1], pointB), pointB) !== 1);
-        }
 
-        else {
-            /*console.log("\t\t\t", "ff",
-                        rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1], pointA).toString(), pointA.toString(),
-                        geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA));
-            console.log("\t\t\t", "ff",
-                        rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0], pointB).toString(), pointB.toString(),
-                        geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB));*/
+        else
+            /*console.log("\t\t\t", "ff", rPoint(edge.cells[0], pointA).toString(), lPoint(edge.cells[1],
+                pointA).toString(), pointA.toString(), geo.orientation(rPoint(edge.cells[0], pointA),
+                lPoint(edge.cells[1], pointA), pointA));
+            console.log("\t\t\t", "ff", rPoint(edge.cells[1], pointB).toString(), lPoint(edge.cells[0],
+                pointB).toString(), pointB.toString(), geo.orientation(rPoint(edge.cells[1], pointB),
+                lPoint(edge.cells[0], pointB), pointB));*/
 
             return (geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA) !== 1 &&
                     geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB) !== 1);
-        }
 
     }
 
@@ -475,73 +470,69 @@
             pointB = vertices[(i + 1) % vertices.length];
 
             //The edge (edge)
-            edge = getPair(pointA, pointB);
+            edge = this.edgeSet.getEdge(pointA, pointB);
 
             /*console.log("\t", "test", pointA.toString(), pointB.toString());
             if (edge.cells[0]) console.log("\t\t", edge.cells[0].id, edge.cells[0].colorName);*/
 
             //Push the triangle into the polygons that use the pair (edge), check if we now have both sides of said
-            //  edge
-            if ((noAdd && edge.cells.length === 2) || (!noAdd && edge.cells.push(polygon) === 2)) {
+            //  edge. Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
+            if (((noAdd && edge.cells.length === 2) || (!noAdd && edge.cells.push(polygon) === 2)) &&
+                convexTest(pointA, pointB, edge)) {
 
-                //console.log("\t\t", edge.cells[1].id, edge.cells[1].colorName);
+                //console.log("\t", edge.cells[1].id, edge.cells[1].colorName, "==>", edge.cells[0].id,
+                //    edge.cells[0].colorName);
 
-                //Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
-                if (convexTest(pointA, pointB, edge)) {
+                //console.log(pointListToString(edge.cells[0]));
+                //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
+                polygon = mergeSimple(edge.cells[0], edge.cells[1], pointA, pointB);
+                //console.log(pointListToString(edge.cells[0]));
 
-                    //console.log("\t", edge.cells[1].id, edge.cells[1].colorName, "==>", edge.cells[0].id, edge.cells[0].colorName);
+                //Loop through the points that make up the new cell
+                for (let n = 0; n < edge.cells[1].length; n++) {
 
-                    //console.log(pointListToString(edge.cells[0]));
-                    //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
-                    polygon = mergeSimple(edge.cells[0], edge.cells[1], pointA, pointB);
-                    //console.log(pointListToString(edge.cells[0]));
+                    //Create new lefts for the points relative to the primary cell
+                    if (edge.cells[1][n] !== pointA)
+                        edge.cells[1][n].lefts.set(polygon, edge.cells[1][n].lefts.get(edge.cells[1]));
 
-                    //Loop through the points that make up the new cell
-                    for (let n = 0; n < edge.cells[1].length; n++) {
+                    //Create new rights for the points relative to the primary cell
+                    if (edge.cells[1][n] !== pointB)
+                        edge.cells[1][n].rights.set(polygon, edge.cells[1][n].rights.get(edge.cells[1]));
 
-                        //Create new lefts for the points relative to the primary cell
-                        if (edge.cells[1][n] !== pointA)
-                            edge.cells[1][n].lefts.set(polygon, edge.cells[1][n].lefts.get(edge.cells[1]));
-
-                        //Create new rights for the points relative to the primary cell
-                        if (edge.cells[1][n] !== pointB)
-                            edge.cells[1][n].rights.set(polygon, edge.cells[1][n].rights.get(edge.cells[1]));
-
-                        //Delete lefts/rights for the points relative to the secondary cell
-                        if (edge.cells[1] !== polygon) {
-                            edge.cells[1][n].lefts.delete(edge.cells[1]);
-                            edge.cells[1][n].rights.delete(edge.cells[1]);
-                        }
-
+                    //Delete lefts/rights for the points relative to the secondary cell
+                    if (edge.cells[1] !== polygon) {
+                        edge.cells[1][n].lefts.delete(edge.cells[1]);
+                        edge.cells[1][n].rights.delete(edge.cells[1]);
                     }
-
-                    //Loop through the points that make up the new cell
-                    for (let n = 0; n < edge.cells[1].length; n++) {
-
-                        //Grab an edge of the point
-                        tEdge = getPair(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
-
-                        //Skip if we're working on the dying edge
-                        if (edge === tEdge) continue;
-
-                        if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
-
-                        if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
-
-                    }
-
-                    //The active triangle we're working on was already added to another, meaning we are actually
-                    //  doing a second merging, meaning we're merging two existing polygons... so remove one
-                    //if (!addPolygon) console.log("\t", "removing", polygons.splice(polygons.indexOf(edge.cells[1]), 1)[0]);
-                    if (!addPolygon) polygons.splice(polygons.indexOf(edge.cells[1]), 1);
-
-                    //The edge was merged into two other polygons; drop it
-                    dropPair(edge);
-
-                    //Since the triangle was merged with an existing one, don't add it
-                    addPolygon = false;
 
                 }
+
+                //Loop through the points that make up the new cell
+                for (let n = 0; n < edge.cells[1].length; n++) {
+
+                    //Grab an edge of the point
+                    tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
+
+                    //Skip if we're working on the dying edge
+                    if (edge === tEdge) continue;
+
+                    if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
+
+                    if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
+
+                }
+
+                //The active triangle we're working on was already added to another, meaning we are actually
+                //  doing a second merging, meaning we're merging two existing polygons... so remove one
+                //if (!addPolygon)
+                //    console.log("\t", "removing", polygons.splice(polygons.indexOf(edge.cells[1]), 1)[0]);
+                if (!addPolygon && noAdd) polygons.splice(polygons.indexOf(edge.cells[1]), 1);
+
+                //The edge was merged into two other polygons; drop it
+                this.edgeSet.dropEdge(edge);
+
+                //Since the triangle was merged with an existing one, don't add it
+                addPolygon = false;
 
             }
 
@@ -550,29 +541,31 @@
         }
 
         //If the polygon was merged previously and not merged this time, update it and be done
-        if (noAdd && addPolygon) {
-
-            if (typeof polygon[this.quadtree.id] !== "undefined") {
-                this.quadtree.remove(polygon);
-                calcPolygonStats(polygon);
-                this.quadtree.push(polygon);
-            }
+        if (noAdd && addPolygon && typeof polygon[this.quadtree.id] !== "undefined") {
+            console.log("not merged2");
+            this.quadtree.remove(polygon);
+            calcPolygonStats(polygon);
+            this.quadtree.push(polygon);
 
         //If the polygon was not merged
-        } else if (addPolygon) {
-
+        } else if (!noAdd && addPolygon) {
+            console.log("not merged");
             //If the polygon was not merged previously, add it to the list and be done
-            if (!noAdd) polygons.push(polygon);
+            polygons.push(polygon);
 
             //If the polygon was merged previously, update it and be done
-            else if (typeof polygon[this.quadtree.id] !== "undefined") {
+            /*if (typeof polygon[this.quadtree.id] !== "undefined") {
                 this.quadtree.remove(polygon);
                 calcPolygonStats(polygon);
                 this.quadtree.push(polygon);
-            }
+            }*/
 
         //If the polygon was merged
-        } else this.mergeInPolygon(polygon, polygons, true);
+        } else if (!noAdd && !addPolygon) {
+            console.log("merged");
+            this.mergeInPolygon(polygon, polygons, true);
+        }
+
 
     };
 
@@ -626,9 +619,9 @@
         for (let i = 0; i < trianglesRaw.length; i += 3) {
 
             //Get the three points of each triangle
-            a = getPoint(list[trianglesRaw[i] * 2], list[trianglesRaw[i] * 2 + 1]);
-            b = getPoint(list[trianglesRaw[i + 1] * 2], list[trianglesRaw[i + 1] * 2 + 1]);
-            c = getPoint(list[trianglesRaw[i + 2] * 2], list[trianglesRaw[i + 2] * 2 + 1]);
+            a = this.pointSet.getPoint(list[trianglesRaw[i] * 2], list[trianglesRaw[i] * 2 + 1]);
+            b = this.pointSet.getPoint(list[trianglesRaw[i + 1] * 2], list[trianglesRaw[i + 1] * 2 + 1]);
+            c = this.pointSet.getPoint(list[trianglesRaw[i + 2] * 2], list[trianglesRaw[i + 2] * 2 + 1]);
 
             //Build it
             triangle = [a, b, c];
@@ -660,6 +653,17 @@
             //Merge in the new triangle
             this.mergeInPolygon(triangle, polygons);
 
+            drawing.clearTemp(); this.quadtree.drawAll();
+            for (let n = 0; n < polygons.length; n++)
+                new drawing.Path(polygons[n]).fill(polygons[n].color).close().width(0).append().draw().temp();
+            for (let n = i + 3; n < trianglesRaw.length; n += 3)
+                new drawing.Path([
+                    new Point(list[trianglesRaw[n] * 2], list[trianglesRaw[n] * 2 + 1]),
+                    new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
+                    new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
+                ]).close().width(0).append().draw().temp();
+            alert();
+
             /*for (n = 0; n < polygons.length; n++)
                 console.log("\t", polygons[n].id, polygons[n].colorName);*/
 
@@ -670,11 +674,6 @@
     };
 
     Base.prototype.update = function () {
-
-        console.log("");
-        console.log("");
-        console.log("");
-        console.log("");
 
         drawing.clearTemp();
 
@@ -726,7 +725,8 @@
                     if (index >= 0) affectedMeshes[i][n].cells.splice(index, 1);
 
                     //Grab the pair between the point and the next point
-                    tPair = getPair(affectedMeshes[i][n], affectedMeshes[i][(n + 1) % affectedMeshes[i].length]);
+                    tPair = this.edgeSet.getEdge(affectedMeshes[i][n],
+                        affectedMeshes[i][(n + 1) % affectedMeshes[i].length]);
 
                     //Remove the mesh from the pair's cells list
                     index = tPair.cells.indexOf(affectedMeshes[i]);
@@ -741,49 +741,33 @@
 
             //Subtract the new polygons from the old mesh; store it in clippedMesh
             clippedMesh = subtract(affectedMeshes, newPolygons);
-
-            console.log(affectedMeshes, newPolygons);
-            console.log(clippedMesh);
-
+            console.log(affectedMeshes, newPolygons, clippedMesh);
             //Loop through all the returned meshes; clip them one at a time
             for (let i = 0; i < clippedMesh.length; i++)
 
                 //Not a hole
+                /*eslint-disable new-cap*/
                 if (ClipperLib.Clipper.Orientation(clippedMesh[i])) {
+                /*eslint-enable new-cap*/
 
                     //Calculate the previous
                     if (parent) {
-                        console.log(parent);
 
                         newMesh = this.clip(parent, holes);
 
-                        //console.log("update0", newMesh);
-
-                        console.log(newMesh, newMesh.length);
-                        for (let n = 0; n < newMesh.length; n++)
-                            console.log(newMesh[n]);
-
                         for (let n = 0; n < newMesh.length; n++) {
-                            //console.log("\t", "push", newMesh[n].id, newMesh[n].colorName);
-
-                            if (typeof newMesh[n] === "undefined")
-                                console.error("Missing newMesh?", newMesh, n, newMesh[n]);
-
-                            console.log("add1");
                             calcPolygonStats(newMesh[n]);
                             this.quadtree.push(newMesh[n]);
                         }
 
+                        holes = [];
+
                     }
 
                     parent = clippedMesh[i];
-                    holes = [];
 
                 //A hole, just add to list and continue
                 } else holes.push(clippedMesh[i]);
-
-            console.log(parent);
-            console.log(holes);
 
             //Clip in the last parent
             newMesh = this.clip(parent, holes);
@@ -791,11 +775,6 @@
             //console.log("update1", newMesh);
 
             for (let i = 0; i < newMesh.length; i++) {
-
-                if (typeof newMesh[i] === "undefined")
-                    console.error("Missing newMesh?", newMesh, i, newMesh[i]);
-
-                console.log("add2");
                 calcPolygonStats(newMesh[i]);
                 this.quadtree.push(newMesh[i]);
             }
@@ -877,7 +856,7 @@
         this.statics.splice(this.statics.indexOf(polygon), 1);
 
         //Remove from bases
-        for (let i = 0; i < this.bases.length; i++) {
+        for (let i = 0; i < this.bases.length; i++)
 
             //Not yet added
             if (polygon.basesStati[i] === undefined)
@@ -892,7 +871,6 @@
                 polygon.baseStati[i] = 2;
 
             }
-        }
 
     };
 
@@ -943,7 +921,7 @@
         else base = this.indexedBases[object.radius];
 
         //Update the base if required
-		if (base.newStatics || base.deadStatics) base.update();
+        if (base.newStatics || base.deadStatics) base.update();
 
 
 

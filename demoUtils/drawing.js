@@ -13,12 +13,15 @@
         movingLine = null,
         currentPath = null,
 
+        elements = [],
+
         moving = false, currentTarget = null;
 
     class Element {
 
         constructor() {
             this.element = null;
+            elements.push(this);
         }
 
         append() {
@@ -28,7 +31,7 @@
         }
 
         detach() {
-            if (this.element) svg.removeChild(this.element);
+            if (this.element && this.element.parentNode === svg) svg.removeChild(this.element);
 
             return this;
         }
@@ -85,7 +88,7 @@
         }
 
         distanceToPoint(point) {
-            var deltaX = this.x - point.x,
+            let deltaX = this.x - point.x,
                 deltaY = this.y - point.y;
 
             return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -172,14 +175,19 @@
 
     function clearTemp() {
 
-        var i;
-
-        for (i = 0; i < tempStuff.length; i++)
+        for (let i = 0; i < tempStuff.length; i++)
             tempStuff[i].detach();
             //if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
 
         tempStuff = [];
 
+    }
+
+    function clear() {
+        for (let i = 0; i < elements.length; i++)
+            elements[i].detach();
+
+        elements = [];
     }
 
     function svgDown(e) {
@@ -195,14 +203,10 @@
 
     function svgUp(e) {
 
-        var point,
-
-            i;
-
         if (e.target.classList.contains("draggable")) return;
 
         if (e.button !== 0) {
-            for (i = 0; i < onAdd.length; i++)
+            for (let i = 0; i < onAdd.length; i++)
                 onAdd[i](new Path([
                     new Point(e.clientX - 25, e.clientY + 25).append(),
                     new Point(e.clientX - 25, e.clientY - 25).append(),
@@ -216,7 +220,7 @@
         if (!moving)
 
             if (currentTarget === null || currentPath !== null) {
-                point = new Point(e.clientX, e.clientY);
+                let point = new Point(e.clientX, e.clientY);
 
                 if (currentPath === null) {
                     currentPath = new Path([point]).draw().append();
@@ -232,7 +236,7 @@
                     currentPath.ended = true;
                     currentPath.draw();
 
-                    for (i = 0; i < onAdd.length; i++)
+                    for (let i = 0; i < onAdd.length; i++)
                         onAdd[i](currentPath);
 
                     currentPath = null;
@@ -263,13 +267,13 @@
 
                         currentTarget.path.draw();
 
-                        for (i = 0; i < onChange.length; i++)
+                        for (let i = 0; i < onChange.length; i++)
                             onChange[i](currentTarget);
 
                     } else if (currentTarget.path.footprint.length === 1) {
                         currentTarget.path.detach();
 
-                        for (i = 0; i < onChange.length; i++)
+                        for (let i = 0; i < onChange.length; i++)
                             onChange[i](currentTarget);
 
                         currentTarget.path.footprint[0].path = null;
@@ -277,12 +281,12 @@
                     } else {
                         currentTarget.path.draw();
 
-                        for (i = 0; i < onChange.length; i++)
+                        for (let i = 0; i < onChange.length; i++)
                             onChange[i](currentTarget);
                     }
 
                 } else {
-                    for (i = 0; i < onRemove.length; i++)
+                    for (let i = 0; i < onRemove.length; i++)
                         onRemove[i](currentTarget);
 
                     currentTarget.detach();
@@ -291,12 +295,12 @@
             else if (currentTarget instanceof Path)
 
                 if (e.timeStamp - currentTarget.lastClick < 300) {
-                    for (i = 0; i < currentTarget.footprint.length; i++) {
+                    for (let i = 0; i < currentTarget.footprint.length; i++) {
                         currentTarget.footprint[i].detach();
                         currentTarget.footprint[i].path = null;
                     }
 
-                    for (i = 0; i < onRemove.length; i++)
+                    for (let i = 0; i < onRemove.length; i++)
                         onRemove[i](currentTarget);
 
                     currentTarget.detach();
@@ -307,8 +311,6 @@
     }
 
     function svgMove(e) {
-
-        var i;
 
         if (e.target.classList.contains("draggable")) return;
 
@@ -332,14 +334,13 @@
                 if (currentTarget.path) {
                     currentTarget.path.draw();
 
-                    for (i = 0; i < onChange.length; i++)
+                    for (let i = 0; i < onChange.length; i++)
                         onChange[i](currentTarget.path);
-                } else
-                    for (i = 0; i < onChange.length; i++)
-                        onChange[i](currentTarget);
+
+                } else for (let i = 0; i < onChange.length; i++) onChange[i](currentTarget);
 
             } else if (currentTarget instanceof Path) {
-                for (i = 0; i < currentTarget.footprint.length; i++) {
+                for (let i = 0; i < currentTarget.footprint.length; i++) {
                     currentTarget.footprint[i].x += e.movementX;
                     currentTarget.footprint[i].y += e.movementY;
                     currentTarget.footprint[i].draw();
@@ -347,7 +348,7 @@
 
                 currentTarget.draw();
 
-                for (i = 0; i < onChange.length; i++)
+                for (let i = 0; i < onChange.length; i++)
                     onChange[i](currentTarget);
 
             }
@@ -377,7 +378,8 @@
         Path: Path,
         Line: Line,
         Text: Text,
-        clearTemp: clearTemp
+        clearTemp: clearTemp,
+        clear: clear
     };
 
 }(window));

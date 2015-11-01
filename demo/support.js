@@ -1,125 +1,109 @@
 
 (function (window) {
     "use strict";
-    
-    var $ = window.$,
-        Geo = window.Geo,
+
+    let $ = window.$,
+        geo = window.geo,
         pos;
-    
+
     function pointToString() {
         return this.x + "," + this.y;
     }
-    
+
     function addToStringToPointList(arr) {
-        
-        var i;
-        
-        for (i = 0; i < arr.length; i++)
+
+        for (let i = 0; i < arr.length; i++)
             arr[i].toString = pointToString;
-        
+
     }
-    
+
     function direction(polygon) {
-        
-        var start, end, middle,
-            
-            direction;
-        
-        direction = Geo.orientation(polygon[0], polygon[2], polygon[1]);
-        
-        for (start = 0; start < polygon.length; start++) {
-            
+
+        let dir = geo.orientation(polygon[0], polygon[2], polygon[1]);
+
+        for (let start = 0, end, middle; start < polygon.length; start++) {
+
             middle = (start + 1) % polygon.length;
             end = (start + 2) % polygon.length;
-            
-            if (direction !== Geo.orientation(polygon[start], polygon[end], polygon[middle])) {
-                console.error("direction", start, direction,
-                              Geo.orientation(polygon[start], polygon[end], polygon[middle]),
+
+            if (dir !== geo.orientation(polygon[start], polygon[end], polygon[middle])) {
+                /*eslint-disable no-console*/
+                console.error("direction", start, dir,
+                              geo.orientation(polygon[start], polygon[end], polygon[middle]),
                               polygon[start].toString(), polygon[end].toString(), polygon[middle].toString());
+                /*eslint-enable no-console*/
                 return -1;
             }
-            
+
         }
-        
-        return direction;
-        
+
+        return dir;
+
     }
-    
+
     function pointListToString(arr) {
-        
-        var i, s = arr[0].toString();
-        
-        for (i = 1; i < arr.length; i++)
+
+        let s = arr[0].toString();
+
+        for (let i = 1; i < arr.length; i++)
             s += ", " + arr[i].toString();
-        
+
         return s;
-        
+
     }
-    
+
+    /*eslint-disable no-console*/
     function polygonTrace(polygon) {
-        var start = polygon[0],
+        let start = polygon[0],
             cur = polygon[0].lefts.get(polygon),
-            priv, privPriv,
             list = [cur],
             str;
-        
-        if (typeof cur === "undefined")
-            console.log(polygon[0], polygon);
-        
+
         str = start.toString();
         while (cur !== start) {
             str += " -> " + cur.toString();
-            
-            if (typeof cur.lefts.get(polygon) === "undefined")
-                console.log(cur, "POLYGON:", polygon);
-            
-            privPriv = priv;
-            priv = cur;
             cur = cur.lefts.get(polygon);
-            if (list.indexOf(cur) >= 0) {
-                console.error("LOOPZL", str, cur);
-                break;
-            }
+
+            if (list.indexOf(cur) >= 0) break;
+
             list.push(cur);
-            
+
         }
-        
+
         str += " -> " + cur.toString();
-        
+
         console.log("left: " + str);
-        
+
         cur = polygon[0].rights.get(polygon);
         list = [cur];
         str = start.toString();
         while (cur !== start) {
             str += " -> " + cur.toString();
             cur = cur.rights.get(polygon);
-            
-            if (list.indexOf(cur) >= 0) {
-                console.error("LOOPZR", str, cur);
-                break;
-            }
+
+            if (list.indexOf(cur) >= 0) break;
+
             list.push(cur);
         }
-        
+
         str += " -> " + cur.toString();
-        
+
         console.log("right: " + str);
-        
-        
+
     }
-    
+    /*eslint-enable no-console*/
+
     window.addEventListener("mousemove", function (e) {
         if (pos) pos.text("(" + e.clientX + ", " + e.clientY + ")");
     });
-    
+
     document.addEventListener("DOMContentLoaded", function () {
         pos = $("#pos");
     });
-    
+
     window.polygonTrace = polygonTrace;
     window.direction = direction;
     window.pointListToString = pointListToString;
     window.addToStringToPointList = addToStringToPointList;
-    
+
 }(window));

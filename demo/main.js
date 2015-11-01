@@ -2,32 +2,10 @@
 (function (window) {
     "use strict";
 
-    var drawing = window.drawing,
+    let drawing = window.drawing,
         NavMesh = window.NavMesh,
 
         navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
-
-    /*function pointListToEarcut(list) {
-
-        var earcutList = [],
-
-            i;
-
-        for (i = 0; i < list.length; i++) {
-            earcutList.push(list[i].x);
-            earcutList.push(list[i].y);
-        }
-
-        return earcutList;
-
-    }*/
-
-    /*Drawing.onAdd.push(function (path) {
-        if (typeof path.polygonTable === "undefined") path.polygonTable = [];
-        pathing.addStatic(path);
-
-        doPath();
-    });*/
 
     drawing.onAdd.push(function (path) {
 
@@ -35,23 +13,53 @@
 
         navmesh.path({radius: 8});
 
-        /*var appendedPath = [
-                {x: 0, y: 0},
-                {x: window.innerWidth, y: 0},
-                {x: window.innerWidth, y: window.innerHeight},
-                {x: 0, y: window.innerHeight}
-            ].concat(path.footprint),
+    });
 
-            flatList = pointListToEarcut(appendedPath),
+    function newSquare(x, y) {
 
-            triangles = earcut(flatList, [4]),
+        let square = new drawing.Path([
+            new drawing.Point(x - 25, y + 25).append(),
+            new drawing.Point(x - 25, y - 25).append(),
+            new drawing.Point(x + 25, y - 25).append(),
+            new drawing.Point(x + 25, y + 25).append()
+        ]).close().draw().append();
 
-            i;
+        for (let i = 0; i < drawing.onAdd.length; i++)
+            drawing.onAdd[i](square);
 
-        for (i = 0; i < triangles.length; i += 3) {
+        return square;
+    }
 
-            navis.addStatic([]);
-        }*/
+    function randomSquare() {
+
+        let x = Math.floor(Math.random() * window.innerWidth),
+            y = Math.floor(Math.random() * window.innerHeight),
+
+            square = newSquare(x, y);
+
+        console.log(x, y);
+
+        return square;
+
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        document.addEventListener("keydown", function(e) {
+
+            //Only do stuff when N key is pressed
+            if (e.which !== 78) return;
+            console.clear();
+            drawing.clear();
+            navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+            //randomSquare(); randomSquare(); randomSquare();
+
+            newSquare(1459, 434);
+            newSquare(1555, 44);
+            //newSquare(1048, 869);
+
+        });
 
     });
 
