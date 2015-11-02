@@ -403,7 +403,10 @@
         /*console.log("\t\t\t", goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB),
             edge.cells[0].length), goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB),
             edge.cells[1].length));*/
-
+        /*console.log(pointA, pointB);
+        console.log(edge);
+        console.log(rPoint(edge.cells[1], pointA), lPoint(edge.cells[0], pointA));
+        console.log(rPoint(edge.cells[0], pointB), lPoint(edge.cells[1], pointB));*/
         if (goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length))
 
             if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length))
@@ -463,25 +466,30 @@
 
             edge, tEdge;
 
+        //console.log(polygon.id, polygon.colorName);
+
         for (let i = 0; i < vertices.length; i++) {
 
             //For easy access of each end point of the edge
             pointA = vertices[i];
             pointB = vertices[(i + 1) % vertices.length];
 
+            //console.log(polygon.indexOf(pointA), i, addPolygon, noAdd);
+            if (polygon.indexOf(pointA) < 0) continue;
+
             //The edge (edge)
             edge = this.edgeSet.getEdge(pointA, pointB);
 
-            /*console.log("\t", "test", pointA.toString(), pointB.toString());
-            if (edge.cells[0]) console.log("\t\t", edge.cells[0].id, edge.cells[0].colorName);*/
+            //console.log("\t", i, "test", pointA.toString(), pointB.toString());
+            //if (edge.cells[0]) console.log("\t\t", edge.cells[0].id, edge.cells[0].colorName);
 
             //Push the triangle into the polygons that use the pair (edge), check if we now have both sides of said
             //  edge. Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
             if (((noAdd && edge.cells.length === 2) || (!noAdd && edge.cells.push(polygon) === 2)) &&
                 convexTest(pointA, pointB, edge)) {
 
-                //console.log("\t", edge.cells[1].id, edge.cells[1].colorName, "==>", edge.cells[0].id,
-                //    edge.cells[0].colorName);
+                /*console.log("\t", edge.cells[1].id, edge.cells[1].colorName, "==>", edge.cells[0].id,
+                    edge.cells[0].colorName);*/
 
                 //console.log(pointListToString(edge.cells[0]));
                 //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
@@ -517,16 +525,22 @@
                     if (edge === tEdge) continue;
 
                     if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
-
                     if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
 
                 }
 
-                //The active triangle we're working on was already added to another, meaning we are actually
-                //  doing a second merging, meaning we're merging two existing polygons... so remove one
-                //if (!addPolygon)
-                //    console.log("\t", "removing", polygons.splice(polygons.indexOf(edge.cells[1]), 1)[0]);
-                if (!addPolygon && noAdd) polygons.splice(polygons.indexOf(edge.cells[1]), 1);
+                /*for (let n = 0; n < edge.cells[1].length; n++) {
+
+                    tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
+                    if (tEdge.cells[0])
+                        if (tEdge.cells[1]) console.log(n, tEdge[0].toString(), tEdge[1].toString(),
+                            tEdge.cells[0].id, tEdge.cells[0].colorName, tEdge.cells[1].id, tEdge.cells[1].colorName);
+                        else console.log(n, tEdge[0].toString(), tEdge[1].toString(),
+                            tEdge.cells[0].id, tEdge.cells[0].colorName);
+                    else
+                        console.log(n, tEdge[0].toString(), tEdge[1].toString(), "empty");
+
+                }*/
 
                 //The edge was merged into two other polygons; drop it
                 this.edgeSet.dropEdge(edge);
@@ -534,6 +548,19 @@
                 //Since the triangle was merged with an existing one, don't add it
                 addPolygon = false;
 
+                //The active triangle we're working on was already added to another, meaning we are actually
+                //  doing a second merging, meaning we're merging two existing polygons... so remove one
+                let index = polygons.indexOf(edge.cells[1]);
+                if (index >= 0) polygons.splice(index, 1);
+                else if (typeof edge.cells[1][this.quadtree.id] !== "undefined") this.quadtree.remove(edge.cells[1]);
+
+            }
+
+            //Working edge was collapsed (i.e., it was colinear)
+            if (polygon.indexOf(edge[0]) < 0 || polygon.indexOf(edge[1]) < 0) {
+                let index = edge.cells.indexOf(polygon);
+                if (index >= 0) edge.cells.splice(index, 1);
+                //debugger;
             }
 
             //console.log(edge, edge.cells.length);
@@ -542,14 +569,18 @@
 
         //If the polygon was merged previously and not merged this time, update it and be done
         if (noAdd && addPolygon && typeof polygon[this.quadtree.id] !== "undefined") {
-            console.log("not merged2");
+            //console.log("a");
+            //polygons.splice(polygons.indexOf(edge.cells[1]), 1);
+
             this.quadtree.remove(polygon);
             calcPolygonStats(polygon);
             this.quadtree.push(polygon);
 
         //If the polygon was not merged
         } else if (!noAdd && addPolygon) {
-            console.log("not merged");
+
+            //console.log("b", polygon.id, polygon.colorName);
+
             //If the polygon was not merged previously, add it to the list and be done
             polygons.push(polygon);
 
@@ -562,25 +593,29 @@
 
         //If the polygon was merged
         } else if (!noAdd && !addPolygon) {
-            console.log("merged");
+            //console.log("c");
             this.mergeInPolygon(polygon, polygons, true);
         }
-
 
     };
 
     function subtract(subject, clip) {
 
-        let result = [];
+        let result = new ClipperLib.PolyTree();
 
         /*eslint-disable new-cap*/
         cpr.Clear();
+
         cpr.AddPaths(subject, ClipperLib.PolyType.ptSubject, true);
         cpr.AddPaths(clip, ClipperLib.PolyType.ptClip, true);
+
         for (let i = 0; i < clip.length; i++)
             cpr.AddPaths(clip[i].holes, ClipperLib.PolyType.ptClip, true);
+
         cpr.Execute(ClipperLib.ClipType.ctDifference, result,
                     ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+
+        result = ClipperLib.JS.PolyTreeToExPolygons(result);
         /*eslint-enable new-cap*/
 
         return result;
@@ -653,7 +688,7 @@
             //Merge in the new triangle
             this.mergeInPolygon(triangle, polygons);
 
-            drawing.clearTemp(); this.quadtree.drawAll();
+            /*drawing.clearTemp(); this.quadtree.drawAll();
             for (let n = 0; n < polygons.length; n++)
                 new drawing.Path(polygons[n]).fill(polygons[n].color).close().width(0).append().draw().temp();
             for (let n = i + 3; n < trianglesRaw.length; n += 3)
@@ -662,7 +697,7 @@
                     new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
                     new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
                 ]).close().width(0).append().draw().temp();
-            alert();
+            alert();*/
 
             /*for (n = 0; n < polygons.length; n++)
                 console.log("\t", polygons[n].id, polygons[n].colorName);*/
@@ -679,7 +714,7 @@
 
         let oldLength, newPolygons, affectedMeshes,
 
-            clippedMesh = [], holes = [], parent,
+            clippedMesh = [],
             newMesh,
 
             index, tPair;
@@ -741,42 +776,18 @@
 
             //Subtract the new polygons from the old mesh; store it in clippedMesh
             clippedMesh = subtract(affectedMeshes, newPolygons);
-            console.log(affectedMeshes, newPolygons, clippedMesh);
+
             //Loop through all the returned meshes; clip them one at a time
-            for (let i = 0; i < clippedMesh.length; i++)
+            for (let i = 0; i < clippedMesh.length; i++) {
 
-                //Not a hole
-                /*eslint-disable new-cap*/
-                if (ClipperLib.Clipper.Orientation(clippedMesh[i])) {
-                /*eslint-enable new-cap*/
+                //Clip it
+                newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
 
-                    //Calculate the previous
-                    if (parent) {
-
-                        newMesh = this.clip(parent, holes);
-
-                        for (let n = 0; n < newMesh.length; n++) {
-                            calcPolygonStats(newMesh[n]);
-                            this.quadtree.push(newMesh[n]);
-                        }
-
-                        holes = [];
-
-                    }
-
-                    parent = clippedMesh[i];
-
-                //A hole, just add to list and continue
-                } else holes.push(clippedMesh[i]);
-
-            //Clip in the last parent
-            newMesh = this.clip(parent, holes);
-
-            //console.log("update1", newMesh);
-
-            for (let i = 0; i < newMesh.length; i++) {
-                calcPolygonStats(newMesh[i]);
-                this.quadtree.push(newMesh[i]);
+                //Add to the quadtree
+                for (let n = 0; n < newMesh.length; n++) {
+                    calcPolygonStats(newMesh[n]);
+                    this.quadtree.push(newMesh[n]);
+                }
             }
 
             this.newStatics = [];
