@@ -7,7 +7,8 @@
 
         navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight),
 
-        immediate = true;
+        immediate = true,
+        samples;
 
     /*let interval = setInterval(function() {
         try {
@@ -21,6 +22,14 @@
     drawing.onAdd.push(function (path) {
 
         navmesh.addStatic(path.footprint);
+
+        if (immediate) navmesh.path({radius: 8});
+
+    });
+
+    drawing.onRemove.push(function (path) {
+
+        navmesh.removeStatic(path.footprint);
 
         if (immediate) navmesh.path({radius: 8});
 
@@ -47,6 +56,7 @@
             y = Math.floor(Math.random() * window.innerHeight);
 
         console.log(x, y);
+        samples.push("newSquare(" + x + ", " + y + ");");
 
         let square = newSquare(x, y);
 
@@ -84,6 +94,20 @@
 
     }
 
+    function nonimmediateChaos(count) {
+
+        count = (count || 100) - 1;
+
+        let interval = setInterval(function() {
+
+            if (!count--) clearInterval(interval);
+
+            randomSquare();
+
+        }, 1);
+
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
 
         document.addEventListener("keydown", function(e) {
@@ -93,10 +117,12 @@
 
             console.clear();
             drawing.clear();
+            samples = [];
             window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
 
-            //immediateGridSimple();
-            immediateChaos(500);
+            immediateGridSimple(200);
+            //immediateChaos(500);
+            //nonimmediateChaos(100);
 
             /*let density = 75;
 
@@ -163,10 +189,60 @@
             newSquare(1706, 761);
             newSquare(912, 530);*/
 
+            //If a polygon merges through a colinear point, the edge isn't always dropped;
+            //  Need to loop through all old points and check rPoint edge
+            /*newSquare(1343, 80);
+            newSquare(783, 725);
+            newSquare(10, 608);
+            newSquare(1658, 563);
+            newSquare(1501, 601);
+            newSquare(577, 851);
+            newSquare(779, 20);
+            newSquare(42, 579);
+            newSquare(310, 152);
+            newSquare(684, 558);
+            newSquare(702, 592);*/
+
+            //QuadTree [this.id] set to [] when a parent splits (changed to remove parent)
+            /*newSquare(1722, 594);
+            newSquare(1316, 572);
+            newSquare(1252, 159);
+            newSquare(1060, 81);
+            newSquare(999, 223);
+            newSquare(427, 306);
+            newSquare(949, 481);
+            newSquare(602, 745);
+            newSquare(214, 420);
+            newSquare(1722, 5);
+            newSquare(1123, 436);
+            newSquare(1347, 925);
+            newSquare(387, 699);
+            newSquare(1676, 277);
+            newSquare(1434, 112);
+            newSquare(1180, 417);
+            newSquare(1665, 433);
+            newSquare(273, 588);
+            newSquare(977, 405);
+            newSquare(290, 493);*/
+
+            //Must drop collapsed edges of eaten polygons
+            /*newSquare(1774, 20);
+            newSquare(309, 879);
+            newSquare(1573, 16);
+            newSquare(335, 231);
+            newSquare(860, 16);
+            newSquare(1133, 27);*/
+
         });
 
     });
 
     window.navmesh = navmesh;
+
+    Object.defineProperty(window, "samples", {
+        get: function() {
+            return samples;
+        }
+    });
 
 }(window));

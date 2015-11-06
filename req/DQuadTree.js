@@ -9,7 +9,7 @@
         direction = window.direction,
         pointListToString = window.pointListToString;
 
-    function DQuadTree(density, parent, min, max) {
+    function DQuadTree(density, parent, min, max, quadrant) {
         this.density = density || 10;
         this.parent = parent;
 
@@ -33,6 +33,7 @@
         this.sharedMax = {x: this.max.x, y: this.max.y};
 
         this.id = parent ? parent.id : "_dquadtree" + DQuadTree.count++;
+        this.uniqid = parent ? parent.uniqid + quadrant : "";
 
     }
 
@@ -57,10 +58,10 @@
             console.log(this.contents[i].id, this.contents[i].colorName);
 
         else {
-            this.children[0].printAll();
-            this.children[1].printAll();
-            this.children[2].printAll();
-            this.children[3].printAll();
+            this.children[0].printIds();
+            this.children[1].printIds();
+            this.children[2].printIds();
+            this.children[3].printIds();
         }
 
     };
@@ -92,9 +93,9 @@
 
         if (this.contents)
             for (i = 0; i < this.contents.length; i++) {
-                new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
-                //new drawing.Path(this.contents[i]).fill(this.contents[i].color).close().width(0).append().draw().temp();
-                //new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
+                //new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
+                new drawing.Path(this.contents[i]).fill(this.contents[i].color).close().width(0).append().draw().temp();
+                new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
             }
         else {
             this.children[0].drawAll();
@@ -144,7 +145,22 @@
         return Math.min(Math.max(y, this.min.y), this.max.y);
     };
 
+    //TODO: NOTE: If item[this.id] contains this, simply return
+    //              This isn't currently being done because NavMesh shouldn't even be sending a push...
     DQuadTree.prototype.push = function (item) {
+
+        if (typeof item[this.id] !== "undefined") {
+            let cur = this;
+
+            while (cur && item[this.id].indexOf(cur) < 0)
+                cur = cur.parent;
+
+            if (cur) {
+                console.log("DOUBLE PUSH", item);
+                console.trace();
+                return;
+            }
+        }
 
         //We've reached density; empty the contents and spill into children
         if (this.contents && this.contents.length >= this.density &&
@@ -164,18 +180,18 @@
 
             //Create four children cells (common intersection at the average, as treated below)
             this.children[0] = new DQuadTree(this.density, this, {x: this.x, y: this.y},
-                                             this.max);
+                                             this.max, 0);
             this.children[1] = new DQuadTree(this.density, this, {x: this.min.x, y: this.y},
-                                             {x: this.x, y: this.max.y});
+                                             {x: this.x, y: this.max.y}, 1);
             this.children[2] = new DQuadTree(this.density, this, this.min,
-                                             {x: this.x, y: this.y});
+                                             {x: this.x, y: this.y}, 2);
             this.children[3] = new DQuadTree(this.density, this, {x: this.x, y: this.min.y},
-                                             {x: this.max.x, y: this.y});
+                                             {x: this.max.x, y: this.y}, 3);
 
             //Loop through all the contents and push them onto the new children
             for (let i = 0; i < this.contents.length; i++) {
 
-                this.contents[i][this.id] = [];
+                this.contents[i][this.id].splice(this.contents[i][this.id].indexOf(this), 1);
 
                 if (this.contents[i].max.x > this.x &&
                     this.contents[i].max.y > this.y)
@@ -195,7 +211,7 @@
 
             }
 
-            this.contents = null;
+            this.contents = undefined;
 
         //We're not full; add to our own contents
         } else if (this.children.length === 0) {
@@ -216,7 +232,6 @@
             ///Increase our length
             this.length++;
 
-            this.graph();
             return;
         }
 
@@ -233,7 +248,6 @@
         //Increase our length
         this.length++;
 
-        this.graph();
     };
 
     DQuadTree.prototype.remove = function (element) {
@@ -245,6 +259,7 @@
         if (typeof element[this.id] !== "undefined") {// && (index = element.cell.contents.indexOf(element)) >= 0) {
 
             for (let i = 0; i < element[this.id].length; i++) {
+
                 index = element[this.id][i].contents.indexOf(element);
 
                 cur = element[this.id][i];
@@ -266,6 +281,7 @@
                     element[this.id][i].parent.collapse();
 
             element[this.id] = undefined;
+
         }
 
         this.graph();
@@ -295,7 +311,9 @@
 
                 if (children[i].contents[n][this.id].indexOf(this) < 0)
                     this.push(children[i].contents[n]);
+
             }
+
             children[i].contents = undefined;
         }
 

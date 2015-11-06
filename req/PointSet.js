@@ -19,8 +19,8 @@
             //I forget what this is for...
             this.segments = new Set();
 
-            this.lefts = new Map();
-            this.rights = new Map();
+            /*this.lefts = new Map();
+            this.rights = new Map();*/
 
             //Points we've tested in terms of visiblity and have passed
             this.visiblePoints = [];
@@ -40,11 +40,13 @@
 
         constructor() {
             this.points = new Map();
+            this.pointCount = 0;
         }
 
         newPoint(x, y) {
 
             let point = new Point(x, y);
+            point.id = this.pointCount++;
 
             this.points.set(x + "," + y, point);
 

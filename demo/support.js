@@ -55,14 +55,14 @@
     /*eslint-disable no-console*/
     function polygonTrace(polygon) {
         let start = polygon[0],
-            cur = polygon[0].lefts.get(polygon),
+            cur = window.lPoint(polygon, polygon[0]),
             list = [cur],
             str;
 
         str = start.toString();
         while (cur !== start) {
             str += " -> " + cur.toString();
-            cur = cur.lefts.get(polygon);
+            cur = window.lPoint(polygon, cur);
 
             if (list.indexOf(cur) >= 0) break;
 
@@ -74,12 +74,12 @@
 
         console.log("left: " + str);
 
-        cur = polygon[0].rights.get(polygon);
+        cur = window.rPoint(polygon, polygon[0]);
         list = [cur];
         str = start.toString();
         while (cur !== start) {
             str += " -> " + cur.toString();
-            cur = cur.rights.get(polygon);
+            cur = window.rPoint(polygon, cur);
 
             if (list.indexOf(cur) >= 0) break;
 

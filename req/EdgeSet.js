@@ -10,14 +10,11 @@
 
             this.cells = [];
 
-            //this.id = Edge.count++;
         }
     }
 
-    class EdgeSet extends Array {
+    class EdgeSet {
         constructor() {
-            super();
-
             this.edges = new Map();
             this.count = 0;
         }
@@ -57,6 +54,16 @@
 
             if (tMap = this.edges.get(a)) return tMap.get(b) || this.newEdge(a, b);
             else return this.newEdge(a, b);
+
+        }
+
+        getEdgeNoCreate(a, b) {
+
+            let tMap;
+
+            if (tMap = this.edges.get(a)) return tMap.get(b);
+
+            return null;
 
         }
 

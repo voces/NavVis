@@ -1,4 +1,4 @@
-//https://i.imgur.com/1mOPJAe.png
+
 (function (window) {
     "use strict";
 
@@ -200,14 +200,6 @@
 
     Base.prototype.meshIntersectMultiple.checks = 0;
 
-    Base.prototype.testExisting = function () {
-
-    };
-
-    Base.prototype.mergeNewPolygons = function () {
-
-    };
-
     Base.prototype.polygonOrientation = function (object) {
 
         let tPolygon = new ClipperLib.Paths(), polygon;
@@ -264,6 +256,7 @@
 
         //Add a reference from the original object to the polygon
         object[this.navmesh.id].polygons[this.radius] = polygon;
+        object[this.navmesh.id].count++;
 
         //Initiate blocks to an empty array (not blocking anything)
         //polygon.blocks = [];
@@ -405,8 +398,8 @@
             edge.cells[1].length));*/
         /*console.log(pointA, pointB);
         console.log(edge);
-        console.log(rPoint(edge.cells[1], pointA), lPoint(edge.cells[0], pointA));
-        console.log(rPoint(edge.cells[0], pointB), lPoint(edge.cells[1], pointB));*/
+        console.log(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA));
+        console.log(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB));*/
         if (goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length))
 
             if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length))
@@ -460,25 +453,23 @@
 
         let addPolygon = true,
 
-            pointA, pointB,
-
-            vertices = polygon.slice(0),
-
-            edge, tEdge;
+            vertices = polygon.slice(0);
 
         //console.log(polygon.id, polygon.colorName);
 
         for (let i = 0; i < vertices.length; i++) {
 
             //For easy access of each end point of the edge
-            pointA = vertices[i];
-            pointB = vertices[(i + 1) % vertices.length];
+            let pointA = vertices[i];
+            let pointB = vertices[(i + 1) % vertices.length];
 
             //console.log(polygon.indexOf(pointA), i, addPolygon, noAdd);
             if (polygon.indexOf(pointA) < 0) continue;
 
             //The edge (edge)
-            edge = this.edgeSet.getEdge(pointA, pointB);
+            let edge = this.edgeSet.getEdge(pointA, pointB);
+
+            //if (edge.id === 26) console.log("EDGE!", polygon.id, polygon.colorName);
 
             //console.log("\t", i, "test", pointA.toString(), pointB.toString());
             //if (edge.cells[0]) console.log("\t\t", edge.cells[0].id, edge.cells[0].colorName);
@@ -493,54 +484,38 @@
 
                 //console.log(pointListToString(edge.cells[0]));
                 //Merge the polygons; pair.cells[0] is automatically updated (triangle is essentially set to it)
+                let original = [];
+
+                if (edge.cells[0] !== polygon)
+                    original = edge.cells[0].slice(0);
+
                 polygon = mergeSimple(edge.cells[0], edge.cells[1], pointA, pointB);
                 //console.log(pointListToString(edge.cells[0]));
 
                 //Loop through the points that make up the new cell
                 for (let n = 0; n < edge.cells[1].length; n++) {
 
-                    //Create new lefts for the points relative to the primary cell
-                    if (edge.cells[1][n] !== pointA)
-                        edge.cells[1][n].lefts.set(polygon, edge.cells[1][n].lefts.get(edge.cells[1]));
-
-                    //Create new rights for the points relative to the primary cell
-                    if (edge.cells[1][n] !== pointB)
-                        edge.cells[1][n].rights.set(polygon, edge.cells[1][n].rights.get(edge.cells[1]));
-
-                    //Delete lefts/rights for the points relative to the secondary cell
-                    if (edge.cells[1] !== polygon) {
-                        edge.cells[1][n].lefts.delete(edge.cells[1]);
-                        edge.cells[1][n].rights.delete(edge.cells[1]);
-                    }
-
-                }
-
-                //Loop through the points that make up the new cell
-                for (let n = 0; n < edge.cells[1].length; n++) {
-
                     //Grab an edge of the point
-                    tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
+                    let tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
 
                     //Skip if we're working on the dying edge
                     if (edge === tEdge) continue;
+                    else if (polygon.indexOf(tEdge[0]) < 0 || polygon.indexOf(tEdge[1]) < 0) {
 
-                    if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
-                    if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
+                        if (tEdge.cells[0] === edge.cells[1]) tEdge.cells.shift();
+                        else if (tEdge.cells[1] === edge.cells[1]) tEdge.cells.pop();
+
+                        if (tEdge.cells.length === 0) this.edgeSet.dropEdge(tEdge);
+
+                    } else if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
+                    else if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
 
                 }
 
-                /*for (let n = 0; n < edge.cells[1].length; n++) {
-
-                    tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
-                    if (tEdge.cells[0])
-                        if (tEdge.cells[1]) console.log(n, tEdge[0].toString(), tEdge[1].toString(),
-                            tEdge.cells[0].id, tEdge.cells[0].colorName, tEdge.cells[1].id, tEdge.cells[1].colorName);
-                        else console.log(n, tEdge[0].toString(), tEdge[1].toString(),
-                            tEdge.cells[0].id, tEdge.cells[0].colorName);
-                    else
-                        console.log(n, tEdge[0].toString(), tEdge[1].toString(), "empty");
-
-                }*/
+                //Drop collapsed edges (if edge.cells[0] was not equal to polygon)
+                for (let n = 0; n < original.length; n++)
+                    if (polygon.indexOf(original[n]) < 0)
+                        this.edgeSet.dropEdge(original[n], original[n ? n - 1 : n.length - 1]);
 
                 //The edge was merged into two other polygons; drop it
                 this.edgeSet.dropEdge(edge);
@@ -560,12 +535,19 @@
             if (polygon.indexOf(edge[0]) < 0 || polygon.indexOf(edge[1]) < 0) {
                 let index = edge.cells.indexOf(polygon);
                 if (index >= 0) edge.cells.splice(index, 1);
-                //debugger;
             }
 
-            //console.log(edge, edge.cells.length);
-
         }
+
+        //Check the vertices of the merged polygon to see if any disappeared; if they did, drop them
+        for (let i = 0; i < vertices.length; i++)
+            if (polygon.indexOf(vertices[i]) < 0)
+                this.edgeSet.dropEdge(vertices[i], rPoint(polygon, vertices[i]));
+
+        //TODO: remove this if it never triggers
+        for (let i = 0; i < vertices.length; i++)
+            if (polygon.indexOf(vertices[i]) < 0 && this.edgeSet.getEdgeNoCreate())
+                alert("pass4 CHECK CODE");
 
         //If the polygon was merged previously and not merged this time, update it and be done
         if (noAdd && addPolygon && typeof polygon[this.quadtree.id] !== "undefined") {
@@ -622,6 +604,30 @@
 
     }
 
+    function add(subject, clip) {
+
+        let result = new ClipperLib.PolyTree();
+
+        /*eslint-disable new-cap*/
+        cpr.Clear();
+
+        cpr.AddPaths(subject, ClipperLib.PolyType.ptSubject, true);
+        cpr.AddPaths(clip, ClipperLib.PolyType.ptClip, true);
+
+        for (let i = 0; i < clip.length; i++)
+            cpr.AddPaths(clip[i].holes, ClipperLib.PolyType.ptClip, true);
+
+        cpr.Execute(ClipperLib.ClipType.ctUnion, result,
+                    ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+
+        result = ClipperLib.JS.PolyTreeToExPolygons(result);
+        /*eslint-enable new-cap*/
+
+        return result;
+
+    }
+
+    //let alertEnabled = true;
     Base.prototype.clip = function(parent, holes) {
 
         let list = [], indicies = [],
@@ -661,16 +667,6 @@
             //Build it
             triangle = [a, b, c];
 
-            //Fill in the "left" point of each triangle (from looking outside)
-            a.lefts.set(triangle, b);
-            b.lefts.set(triangle, c);
-            c.lefts.set(triangle, a);
-
-            //Fill in the "right" point of each triangle (from looking outside)
-            a.rights.set(triangle, c);
-            b.rights.set(triangle, a);
-            c.rights.set(triangle, b);
-
             triangle.id = curId++;
 
             color = Color.indexColor(triangle.id);
@@ -680,7 +676,7 @@
 
             //console.log(triangle.id, triangle.colorName, a.toString(), b.toString(), c.toString());
 
-            new drawing.Path(triangle).fill(triangle.color).close().width(0).append().draw().temp();
+            //new drawing.Path(triangle).fill(triangle.color).close().width(0).append().draw().temp();
 
             /*for (n = 0; n < polygons.length; n++)
                 console.log("\t", polygons[n].id, polygons[n].colorName);*/
@@ -697,7 +693,8 @@
                     new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
                     new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
                 ]).close().width(0).append().draw().temp();
-            alert();*/
+            if (alertEnabled) alert();
+            console.log("");*/
 
             /*for (n = 0; n < polygons.length; n++)
                 console.log("\t", polygons[n].id, polygons[n].colorName);*/
@@ -708,74 +705,103 @@
 
     };
 
+    Base.prototype.killAffected = function(affectedMeshes) {
+
+        //Loop through all affected meshes
+        for (let i = 0; i < affectedMeshes.length; i++) {
+
+            //console.log("remove", affectedMeshes[i].id, affectedMeshes[i].colorName);
+
+            //Remove the mesh from the quadtree
+            this.quadtree.remove(affectedMeshes[i]);
+
+            //Loop through all points on the mesh
+            for (let n = 0; n < affectedMeshes[i].length; n++) {
+
+                //Remove the mesh from the point's cells list
+                let index = affectedMeshes[i][n].cells.indexOf(affectedMeshes[i]);
+                if (index >= 0) affectedMeshes[i][n].cells.splice(index, 1);
+
+                //Grab the pair between the point and the next point
+                let tPair = this.edgeSet.getEdge(affectedMeshes[i][n],
+                    affectedMeshes[i][(n + 1) % affectedMeshes[i].length]);
+
+                //Remove the mesh from the pair's cells list
+                index = tPair.cells.indexOf(affectedMeshes[i]);
+                if (index >= 0) tPair.cells.splice(index, 1);
+
+                //Remove the lefts/rights associated with the mesh from the point
+                /*affectedMeshes[i][n].lefts.delete(affectedMeshes[i]);
+                affectedMeshes[i][n].rights.delete(affectedMeshes[i]);*/
+            }
+
+        }
+
+    };
+
     Base.prototype.update = function () {
 
         drawing.clearTemp();
 
-        let oldLength, newPolygons, affectedMeshes,
-
-            clippedMesh = [],
-            newMesh,
-
-            index, tPair;
+        let newMesh;
 
         //Only bother if there are some statics to remove
         if (this.deadStatics.length > 0) {
 
-            //this.deadPolygons = [];
-            //this.deadStatics = [];
+            let oldPolygons = [];
+
+            for (let i = 0; i < this.deadStatics.length; i++) {
+                oldPolygons.push(this.deadStatics[i][this.navmesh.id].polygons[this.radius]);
+                if (!--this.deadStatics[i][this.navmesh.id].count)
+                    this.deadStatics[i][this.navmesh.id] = undefined;
+            }
+
+            let affectedMeshes = this.meshIntersectMultiple(oldPolygons);
+
+            this.killAffected(affectedMeshes);
+
+            //Subtract the new polygons from the old mesh; store it in clippedMesh
+            let clippedMesh = add(affectedMeshes, oldPolygons);
+
+            //Loop through all the returned meshes; clip them one at a time
+            for (let i = 0; i < clippedMesh.length; i++) {
+
+                //Clip it
+                newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
+
+                //Add to the quadtree
+                for (let n = 0; n < newMesh.length; n++) {
+                    calcPolygonStats(newMesh[n]);
+                    this.quadtree.push(newMesh[n]);
+                }
+            }
+
+            this.deadStatics = [];
+
         }
 
         //Only bother if there are some new static objects
         if (this.newStatics.length > 0) {
 
             //Store the old length
-            oldLength = this.polygons.length;
+            let oldLength = this.polygons.length;
 
             //Add new; block existing
             for (let i = 0; i < this.newStatics.length; i++)
                 this.polygonOrientation(this.newStatics[i]);
 
             //Grab the polygons just added
-            newPolygons = this.polygons.slice(oldLength);
+            let newPolygons = this.polygons.slice(oldLength);
 
             //Grab the meshes's we're going to be working on
             //  TODO: this should be reduced to interesecting polygons (such test is probably cheaper than rebuilding
             //        paths)
-            affectedMeshes = this.meshIntersectMultiple(newPolygons);
+            let affectedMeshes = this.meshIntersectMultiple(newPolygons);
 
-            //Loop through all affected meshes
-            for (let i = 0; i < affectedMeshes.length; i++) {
-
-                //console.log("remove", affectedMeshes[i].id, affectedMeshes[i].colorName);
-
-                //Remove the mesh from the quadtree
-                this.quadtree.remove(affectedMeshes[i]);
-
-                //Loop through all points on the mesh
-                for (let n = 0; n < affectedMeshes[i].length; n++) {
-
-                    //Remove the mesh from the point's cells list
-                    index = affectedMeshes[i][n].cells.indexOf(affectedMeshes[i]);
-                    if (index >= 0) affectedMeshes[i][n].cells.splice(index, 1);
-
-                    //Grab the pair between the point and the next point
-                    tPair = this.edgeSet.getEdge(affectedMeshes[i][n],
-                        affectedMeshes[i][(n + 1) % affectedMeshes[i].length]);
-
-                    //Remove the mesh from the pair's cells list
-                    index = tPair.cells.indexOf(affectedMeshes[i]);
-                    if (index >= 0) tPair.cells.splice(index, 1);
-
-                    //Remove the lefts/rights associated with the mesh from the point
-                    affectedMeshes[i][n].lefts.delete(affectedMeshes[i]);
-                    affectedMeshes[i][n].rights.delete(affectedMeshes[i]);
-                }
-
-            }
+            this.killAffected(affectedMeshes);
 
             //Subtract the new polygons from the old mesh; store it in clippedMesh
-            clippedMesh = subtract(affectedMeshes, newPolygons);
+            let clippedMesh = subtract(affectedMeshes, newPolygons);
 
             //Loop through all the returned meshes; clip them one at a time
             for (let i = 0; i < clippedMesh.length; i++) {
@@ -793,13 +819,6 @@
             this.newStatics = [];
 
         }
-
-        affectedMeshes = this.meshIntersectMultiple([
-            {min: {x: 0, y: 0}, max: {x: window.innerWidth, y: window.innerHeight}, radius: 0}]);
-
-        //For display purposes, draw all the triangles
-        for (let i = 0; i < affectedMeshes.length; i++)
-            new drawing.Path(affectedMeshes[i]).fill("none").close().width(5).append().draw().temp();
 
         //alert();
         drawing.clearTemp(); this.quadtree.drawAll();
@@ -846,7 +865,8 @@
         polygon[this.id] = {
             isStatic: true,
             polygons: [],
-            basesStati: []
+            basesStati: [],
+            count: 0
         };
 
         //Loop through bases to add/remove...
@@ -863,6 +883,9 @@
      */
     NavMesh.prototype.removeStatic = function (polygon) {
 
+        //Ignore polygons that are not statics
+        if (!polygon[this.id].isStatic) return;
+
         //Remove from the list of statics
         this.statics.splice(this.statics.indexOf(polygon), 1);
 
@@ -870,16 +893,16 @@
         for (let i = 0; i < this.bases.length; i++)
 
             //Not yet added
-            if (polygon.basesStati[i] === undefined)
+            if (polygon[this.id].polygons[this.bases[i].radius] === undefined)
 
                 //Remove from any new statics
                 this.bases[i].newStatics.splice(this.bases[i].newStatics.indexOf(polygon), 1);
 
             //Not yet marked for removal
-            else if (polygon.baseStati[i] !== 2) {
+            else if (polygon[this.id].basesStati[i] !== 2) {
 
                 this.bases[i].deadStatics.push(polygon);
-                polygon.baseStati[i] = 2;
+                polygon[this.id].basesStati[i] = 2;
 
             }
 
@@ -1124,5 +1147,7 @@
     window.NavMesh = NavMesh;
     window.cpr = cpr;
     window.subtract = subtract;
+    window.lPoint = lPoint;
+    window.rPoint = rPoint;
 
 }(window));
