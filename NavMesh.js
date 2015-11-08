@@ -72,7 +72,6 @@
 
         this.navmesh = navmesh;
 
-
         //The radius this base is using
         this.radius = radius;
 
@@ -103,10 +102,9 @@
         //bounds.radius = distanceBetweenPoints({x: bounds[0], y: bounds[1]}, bounds);
 
         this.mesh = [bounds];
-        //this.quadtree = new DQuadTree();
-        this.quadtree = new DQuadTree(32, null, bounds[0], bounds[2]);
-        //this.quadtree = new QuadTree(512, 512);
-        this.quadtree.push(bounds);
+        this.walkableQT = new DQuadTree(16, null, bounds[0], bounds[2]);
+        this.obstacleQT = new DQuadTree(32, null, bounds[0], bounds[2]);
+        this.walkableQT.push(bounds);
 
     }
 
@@ -132,12 +130,14 @@
 
     };
 
-    Base.prototype.meshIntersectRough = function(polygon, check) {
+    Base.prototype.meshIntersectRough = function(polygon, check, source) {
+
+        source = source || this.walkableQT;
 
         //A generator that returns one cell at a time
-        let query = this.quadtree.queryRange(polygon.min.x, polygon.min.y,
-                                             polygon.max.x, polygon.max.y, polygon.radius),
-        //var query = this.quadtree.queryLine(polygon.min, polygon.max, polygon.radius),
+        let query = source.queryRange(polygon.min.x, polygon.min.y,
+                                      polygon.max.x, polygon.max.y, polygon.radius),
+        //var query = this.walkableQT.queryLine(polygon.min, polygon.max, polygon.radius),
 
             meshes = [],
 
@@ -181,24 +181,26 @@
 
     }
 
-    Base.prototype.meshIntersectMultiple = function(polygons) {
+    Base.prototype.meshIntersectMultiple = function(polygons, source) {
+
+        source = source || this.walkableQT;
 
         let meshes = [];
 
         //Loop through each polygon, adding cells/meshes one at a time
         for (let i = 0; i < polygons.length; i++)
             meshes = meshes.concat(
-                this.meshIntersectRough(polygons[i], Base.prototype.meshIntersectMultiple.checks)
+                this.meshIntersectRough(polygons[i], Base.meshIntersectMultipleChecks, source)
                     .filter(doPolygonsIntersect, {polygon: polygons[i]}));
 
         //Inc our checker
-        this.meshIntersectMultiple.checks++;
+        Base.meshIntersectMultipleChecks++;
 
         return meshes;
 
     };
 
-    Base.prototype.meshIntersectMultiple.checks = 0;
+    Base.meshIntersectMultipleChecks = 0;
 
     Base.prototype.polygonOrientation = function (object) {
 
@@ -252,6 +254,7 @@
 
         //Push the polygon into both the polygon and newpolygon list
         this.polygons.push(polygon);
+        this.obstacleQT.push(polygon);
         //this.newPolygons.push(polygon);
 
         //Add a reference from the original object to the polygon
@@ -456,6 +459,7 @@
             vertices = polygon.slice(0);
 
         //console.log(polygon.id, polygon.colorName);
+        //if (polygon.id === 80) alertEnabled = true;
 
         for (let i = 0; i < vertices.length; i++) {
 
@@ -490,13 +494,15 @@
                     original = edge.cells[0].slice(0);
 
                 polygon = mergeSimple(edge.cells[0], edge.cells[1], pointA, pointB);
-                //console.log(pointListToString(edge.cells[0]));
+                //console.log(window.pointListToString(polygon));
 
                 //Loop through the points that make up the new cell
                 for (let n = 0; n < edge.cells[1].length; n++) {
 
                     //Grab an edge of the point
                     let tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
+
+                    //console.log(n, edge.toString(), tEdge.toString ());
 
                     //Skip if we're working on the dying edge
                     if (edge === tEdge) continue;
@@ -505,6 +511,7 @@
                         if (tEdge.cells[0] === edge.cells[1]) tEdge.cells.shift();
                         else if (tEdge.cells[1] === edge.cells[1]) tEdge.cells.pop();
 
+                        //console.log(tEdge[0].toString(), tEdge[1].toString(), tEdge.cells.slice(0));
                         if (tEdge.cells.length === 0) this.edgeSet.dropEdge(tEdge);
 
                     } else if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
@@ -514,8 +521,12 @@
 
                 //Drop collapsed edges (if edge.cells[0] was not equal to polygon)
                 for (let n = 0; n < original.length; n++)
-                    if (polygon.indexOf(original[n]) < 0)
-                        this.edgeSet.dropEdge(original[n], original[n ? n - 1 : n.length - 1]);
+                    if (polygon.indexOf(original[n]) < 0) {
+                        //console.log("collapse", original[n].toString(), original[n ? n - 1 : original.length - 1].toString());
+                        this.edgeSet.dropEdge(original[n], original[n ? n - 1 : original.length - 1]);
+                        this.edgeSet.dropEdge(original[n], original[(n + 1) % original.length]);
+                    } else
+                        //console.log("keep", original[n].toString(), original[n ? n - 1 : original.length - 1].toString());
 
                 //The edge was merged into two other polygons; drop it
                 this.edgeSet.dropEdge(edge);
@@ -527,7 +538,8 @@
                 //  doing a second merging, meaning we're merging two existing polygons... so remove one
                 let index = polygons.indexOf(edge.cells[1]);
                 if (index >= 0) polygons.splice(index, 1);
-                else if (typeof edge.cells[1][this.quadtree.id] !== "undefined") this.quadtree.remove(edge.cells[1]);
+                else if (typeof edge.cells[1][this.walkableQT.id] !== "undefined")
+                    this.walkableQT.remove(edge.cells[1]);
 
             }
 
@@ -550,13 +562,13 @@
                 alert("pass4 CHECK CODE");
 
         //If the polygon was merged previously and not merged this time, update it and be done
-        if (noAdd && addPolygon && typeof polygon[this.quadtree.id] !== "undefined") {
+        if (noAdd && addPolygon && typeof polygon[this.walkableQT.id] !== "undefined") {
             //console.log("a");
             //polygons.splice(polygons.indexOf(edge.cells[1]), 1);
 
-            this.quadtree.remove(polygon);
+            this.walkableQT.remove(polygon);
             calcPolygonStats(polygon);
-            this.quadtree.push(polygon);
+            this.walkableQT.push(polygon);
 
         //If the polygon was not merged
         } else if (!noAdd && addPolygon) {
@@ -567,10 +579,10 @@
             polygons.push(polygon);
 
             //If the polygon was merged previously, update it and be done
-            /*if (typeof polygon[this.quadtree.id] !== "undefined") {
-                this.quadtree.remove(polygon);
+            /*if (typeof polygon[this.walkableQT.id] !== "undefined") {
+                this.walkableQT.remove(polygon);
                 calcPolygonStats(polygon);
-                this.quadtree.push(polygon);
+                this.walkableQT.push(polygon);
             }*/
 
         //If the polygon was merged
@@ -604,39 +616,12 @@
 
     }
 
-    function add(subject, clip) {
-
-        let result = new ClipperLib.PolyTree();
-
-        /*eslint-disable new-cap*/
-        cpr.Clear();
-
-        cpr.AddPaths(subject, ClipperLib.PolyType.ptSubject, true);
-        cpr.AddPaths(clip, ClipperLib.PolyType.ptClip, true);
-
-        for (let i = 0; i < clip.length; i++)
-            cpr.AddPaths(clip[i].holes, ClipperLib.PolyType.ptClip, true);
-
-        cpr.Execute(ClipperLib.ClipType.ctUnion, result,
-                    ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
-
-        result = ClipperLib.JS.PolyTreeToExPolygons(result);
-        /*eslint-enable new-cap*/
-
-        return result;
-
-    }
-
-    //let alertEnabled = true;
+    let alertEnabled = true;
     Base.prototype.clip = function(parent, holes) {
 
         let list = [], indicies = [],
 
-            trianglesRaw, polygons = [],
-
-            a, b, c, triangle,
-
-            color;
+            trianglesRaw, polygons = [];
 
         //Push all parents onto the list first
         for (let i = 0; i < parent.length; i++) {
@@ -660,16 +645,16 @@
         for (let i = 0; i < trianglesRaw.length; i += 3) {
 
             //Get the three points of each triangle
-            a = this.pointSet.getPoint(list[trianglesRaw[i] * 2], list[trianglesRaw[i] * 2 + 1]);
-            b = this.pointSet.getPoint(list[trianglesRaw[i + 1] * 2], list[trianglesRaw[i + 1] * 2 + 1]);
-            c = this.pointSet.getPoint(list[trianglesRaw[i + 2] * 2], list[trianglesRaw[i + 2] * 2 + 1]);
+            let a = this.pointSet.getPoint(list[trianglesRaw[i] * 2], list[trianglesRaw[i] * 2 + 1]);
+            let b = this.pointSet.getPoint(list[trianglesRaw[i + 1] * 2], list[trianglesRaw[i + 1] * 2 + 1]);
+            let c = this.pointSet.getPoint(list[trianglesRaw[i + 2] * 2], list[trianglesRaw[i + 2] * 2 + 1]);
 
             //Build it
-            triangle = [a, b, c];
+            let triangle = [a, b, c];
 
             triangle.id = curId++;
 
-            color = Color.indexColor(triangle.id);
+            let color = Color.indexColor(triangle.id);
 
             triangle.colorName = color[0];
             triangle.color = color[1];
@@ -684,7 +669,7 @@
             //Merge in the new triangle
             this.mergeInPolygon(triangle, polygons);
 
-            /*drawing.clearTemp(); this.quadtree.drawAll();
+            /*drawing.clearTemp(); this.walkableQT.drawAll();
             for (let n = 0; n < polygons.length; n++)
                 new drawing.Path(polygons[n]).fill(polygons[n].color).close().width(0).append().draw().temp();
             for (let n = i + 3; n < trianglesRaw.length; n += 3)
@@ -712,8 +697,8 @@
 
             //console.log("remove", affectedMeshes[i].id, affectedMeshes[i].colorName);
 
-            //Remove the mesh from the quadtree
-            this.quadtree.remove(affectedMeshes[i]);
+            //Remove the mesh from the walkableQT
+            this.walkableQT.remove(affectedMeshes[i]);
 
             //Loop through all points on the mesh
             for (let n = 0; n < affectedMeshes[i].length; n++) {
@@ -752,16 +737,13 @@
 
             for (let i = 0; i < this.deadStatics.length; i++) {
                 oldPolygons.push(this.deadStatics[i][this.navmesh.id].polygons[this.radius]);
-                if (!--this.deadStatics[i][this.navmesh.id].count)
-                    this.deadStatics[i][this.navmesh.id] = undefined;
+                this.obstacleQT.remove(this.deadStatics[i][this.navmesh.id].polygons[this.radius]);
             }
 
-            let affectedMeshes = this.meshIntersectMultiple(oldPolygons);
+            let persistantPolygons = this.meshIntersectMultiple(oldPolygons, this.obstacleQT);
 
-            this.killAffected(affectedMeshes);
-
-            //Subtract the new polygons from the old mesh; store it in clippedMesh
-            let clippedMesh = add(affectedMeshes, oldPolygons);
+            //Subtract the still-existing polygons from the one's that are gone
+            let clippedMesh = subtract(oldPolygons, persistantPolygons);
 
             //Loop through all the returned meshes; clip them one at a time
             for (let i = 0; i < clippedMesh.length; i++) {
@@ -769,10 +751,10 @@
                 //Clip it
                 newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
 
-                //Add to the quadtree
+                //Add to the walkableQT
                 for (let n = 0; n < newMesh.length; n++) {
                     calcPolygonStats(newMesh[n]);
-                    this.quadtree.push(newMesh[n]);
+                    this.walkableQT.push(newMesh[n]);
                 }
             }
 
@@ -809,10 +791,10 @@
                 //Clip it
                 newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
 
-                //Add to the quadtree
+                //Add to the walkableQT
                 for (let n = 0; n < newMesh.length; n++) {
                     calcPolygonStats(newMesh[n]);
-                    this.quadtree.push(newMesh[n]);
+                    this.walkableQT.push(newMesh[n]);
                 }
             }
 
@@ -821,7 +803,7 @@
         }
 
         //alert();
-        drawing.clearTemp(); this.quadtree.drawAll();
+        //drawing.clearTemp(); this.walkableQT.drawAll();
 
     };
 
@@ -956,9 +938,6 @@
 
         //Update the base if required
         if (base.newStatics || base.deadStatics) base.update();
-
-
-
 
         /*return false;
         //One or both points already trapped

@@ -19,14 +19,8 @@
             //I forget what this is for...
             this.segments = new Set();
 
-            /*this.lefts = new Map();
-            this.rights = new Map();*/
-
             //Points we've tested in terms of visiblity and have passed
             this.visiblePoints = [];
-
-            //points.set(x + "," + y, this);
-            //points[x][y] = this;
 
         }
 

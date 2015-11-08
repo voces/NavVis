@@ -11,6 +11,10 @@
             this.cells = [];
 
         }
+
+        toString() {
+            return this[0].toString() + " - " + this[1].toString();
+        }
     }
 
     class EdgeSet {

@@ -14,7 +14,7 @@
         this.parent = parent;
 
         this.contents = [];
-        this.children = [];
+        this.children = undefined;
 
         this.length = 0;
 
@@ -87,21 +87,24 @@
     };
     /*eslint-enable no-console*/
 
-    DQuadTree.prototype.drawAll = function() {
+    DQuadTree.prototype.drawAll = function(simple) {
 
         let i;
 
         if (this.contents)
-            for (i = 0; i < this.contents.length; i++) {
-                //new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
-                new drawing.Path(this.contents[i]).fill(this.contents[i].color).close().width(0).append().draw().temp();
-                new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
-            }
+            for (i = 0; i < this.contents.length; i++)
+                if (!simple) {
+                    new drawing.Path(this.contents[i])
+                        .fill(this.contents[i].color).close().width(0).append().draw().temp();
+                    new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
+                } else new drawing.Path(this.contents[i]).fill("rgba(0,0,0,.1)").close().width(0).append().draw().temp();
+                    //new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
+
         else {
-            this.children[0].drawAll();
-            this.children[1].drawAll();
-            this.children[2].drawAll();
-            this.children[3].drawAll();
+            this.children[0].drawAll(simple);
+            this.children[1].drawAll(simple);
+            this.children[2].drawAll(simple);
+            this.children[3].drawAll(simple);
         }
 
     };
@@ -113,7 +116,7 @@
         let cells = [[this, 0]], cell;
 
         while (cell = cells.pop())
-            if (cell[0].children.length !== 0) {
+            if (cell[0].children) {
 
                 new drawing.Line(
                     {x: cell[0].x, y: cell[0].y},
@@ -145,6 +148,59 @@
         return Math.min(Math.max(y, this.min.y), this.max.y);
     };
 
+    DQuadTree.prototype.split = function() {
+
+        this.x = this.y = 0;
+
+        //Calculate the sum x/y of the cell (clamp each value to the cell)
+        for (let i = 0; i < this.contents.length; i++) {
+            this.x += Math.min(Math.max(this.contents[i].x, this.min.x), this.max.x);
+            this.y += Math.min(Math.max(this.contents[i].y, this.min.y), this.max.y);
+        }
+
+        //Turn that sum into an average
+        this.x /= this.contents.length;
+        this.y /= this.contents.length;
+
+        this.children = [];
+
+        //Create four children cells (common intersection at the average, as treated below)
+        this.children[0] = new DQuadTree(this.density, this, {x: this.x, y: this.y},
+                                         this.max, 0);
+        this.children[1] = new DQuadTree(this.density, this, {x: this.min.x, y: this.y},
+                                         {x: this.x, y: this.max.y}, 1);
+        this.children[2] = new DQuadTree(this.density, this, this.min,
+                                         {x: this.x, y: this.y}, 2);
+        this.children[3] = new DQuadTree(this.density, this, {x: this.x, y: this.min.y},
+                                         {x: this.max.x, y: this.y}, 3);
+
+        //Loop through all the contents and push them onto the new children
+        for (let i = 0; i < this.contents.length; i++) {
+
+            this.contents[i][this.id].splice(this.contents[i][this.id].indexOf(this), 1);
+
+            if (this.contents[i].max.x > this.x &&
+                this.contents[i].max.y > this.y)
+                this.children[0].push(this.contents[i]);
+
+            if (this.contents[i].min.x < this.x &&
+                this.contents[i].max.y > this.y)
+                this.children[1].push(this.contents[i]);
+
+            if (this.contents[i].min.x < this.x &&
+                this.contents[i].min.y < this.y)
+                this.children[2].push(this.contents[i]);
+
+            if (this.contents[i].max.x > this.x &&
+                this.contents[i].min.y < this.y)
+                this.children[3].push(this.contents[i]);
+
+        }
+
+        this.contents = undefined;
+
+    };
+
     //TODO: NOTE: If item[this.id] contains this, simply return
     //              This isn't currently being done because NavMesh shouldn't even be sending a push...
     DQuadTree.prototype.push = function (item) {
@@ -164,57 +220,12 @@
 
         //We've reached density; empty the contents and spill into children
         if (this.contents && this.contents.length >= this.density &&
-            (this.sharedMax.x - this.sharedMin.x < -1e-7 || this.sharedMax.y - this.sharedMin.y < -1e-7)) {
+            (this.sharedMax.x - this.sharedMin.x < -1e-7 || this.sharedMax.y - this.sharedMin.y < -1e-7))
 
-            this.x = this.y = 0;
-
-            //Calculate the sum x/y of the cell (clamp each value to the cell)
-            for (let i = 0; i < this.contents.length; i++) {
-                this.x += Math.min(Math.max(this.contents[i].x, this.min.x), this.max.x);
-                this.y += Math.min(Math.max(this.contents[i].y, this.min.y), this.max.y);
-            }
-
-            //Turn that sum into an average
-            this.x /= this.contents.length;
-            this.y /= this.contents.length;
-
-            //Create four children cells (common intersection at the average, as treated below)
-            this.children[0] = new DQuadTree(this.density, this, {x: this.x, y: this.y},
-                                             this.max, 0);
-            this.children[1] = new DQuadTree(this.density, this, {x: this.min.x, y: this.y},
-                                             {x: this.x, y: this.max.y}, 1);
-            this.children[2] = new DQuadTree(this.density, this, this.min,
-                                             {x: this.x, y: this.y}, 2);
-            this.children[3] = new DQuadTree(this.density, this, {x: this.x, y: this.min.y},
-                                             {x: this.max.x, y: this.y}, 3);
-
-            //Loop through all the contents and push them onto the new children
-            for (let i = 0; i < this.contents.length; i++) {
-
-                this.contents[i][this.id].splice(this.contents[i][this.id].indexOf(this), 1);
-
-                if (this.contents[i].max.x > this.x &&
-                    this.contents[i].max.y > this.y)
-                    this.children[0].push(this.contents[i]);
-
-                if (this.contents[i].min.x < this.x &&
-                    this.contents[i].max.y > this.y)
-                    this.children[1].push(this.contents[i]);
-
-                if (this.contents[i].min.x < this.x &&
-                    this.contents[i].min.y < this.y)
-                    this.children[2].push(this.contents[i]);
-
-                if (this.contents[i].max.x > this.x &&
-                    this.contents[i].min.y < this.y)
-                    this.children[3].push(this.contents[i]);
-
-            }
-
-            this.contents = undefined;
+            this.split();
 
         //We're not full; add to our own contents
-        } else if (this.children.length === 0) {
+        else if (!this.children) {
 
             //First, update the shared space (used for detecting stacking)
             if (item.min.x > this.sharedMin.x) this.sharedMin.x = item.min.x;
@@ -276,6 +287,7 @@
 
             for (let i = 0; i < element[this.id].length; i++)
                 if (element[this.id][i].contents && element[this.id][i].parent &&
+                    element[this.id][i].parent.contents &&
                     element[this.id][i].parent.length * 1.25 < element[this.id][i].density)
 
                     element[this.id][i].parent.collapse();
@@ -283,8 +295,6 @@
             element[this.id] = undefined;
 
         }
-
-        this.graph();
 
     };
 
@@ -300,7 +310,7 @@
 
         //Reset the children to empty
         let children = this.children;
-        this.children = [];
+        this.children = undefined;
 
         //Push the contents of all children to this
         for (let i = 0; i < 4; i++) {
@@ -350,7 +360,7 @@
         while (cell = cells.pop())
 
             //We have children; add them to cells and try again
-            if (cell.children.length > 0) {
+            if (cell.children) {
                 if (maxX + radius >= cell.x && maxY + radius >= cell.y) cells.push(cell.children[0]);
                 if (minX - radius <= cell.x && maxY + radius >= cell.y) cells.push(cell.children[1]);
                 if (minX - radius <= cell.x && minY - radius <= cell.y) cells.push(cell.children[2]);

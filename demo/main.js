@@ -8,7 +8,11 @@
         navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight),
 
         immediate = true,
-        samples;
+        sampleSets = [],
+        samples, addTimes = [], removeTimes = [],
+
+        squareSize = 8,
+        radiusSize = 4;
 
     /*let interval = setInterval(function() {
         try {
@@ -21,9 +25,12 @@
 
     drawing.onAdd.push(function (path) {
 
+        path.footprint.drawingElement = path;
         navmesh.addStatic(path.footprint);
 
-        if (immediate) navmesh.path({radius: 8});
+        //let start = performance.now();
+        if (immediate) navmesh.path({radius: radiusSize});
+        //addTimes.push(performance.now() - start);
 
     });
 
@@ -31,17 +38,31 @@
 
         navmesh.removeStatic(path.footprint);
 
-        if (immediate) navmesh.path({radius: 8});
+        if (immediate) navmesh.path({radius: radiusSize});
 
     });
+
+    function pToString() {
+        return this.x + "," + this.y;
+    }
+
+    function p(x, y) {
+        let point = {x: x, y: y};
+        point.toString = pToString;
+        return point;
+    }
 
     function newSquare(x, y) {
 
         let square = new drawing.Path([
-            new drawing.Point(x - 25, y + 25).append(),
-            new drawing.Point(x - 25, y - 25).append(),
-            new drawing.Point(x + 25, y - 25).append(),
-            new drawing.Point(x + 25, y + 25).append()
+            p(x - squareSize, y + squareSize),
+            p(x - squareSize, y - squareSize),
+            p(x + squareSize, y - squareSize),
+            p(x + squareSize, y + squareSize)
+            /*new drawing.Point(x - squareSize, y + squareSize).append(),
+            new drawing.Point(x - squareSize, y - squareSize).append(),
+            new drawing.Point(x + squareSize, y - squareSize).append(),
+            new drawing.Point(x + squareSize, y + squareSize).append()*/
         ]).close().draw().append();
 
         for (let i = 0; i < drawing.onAdd.length; i++)
@@ -55,7 +76,7 @@
         let x = Math.floor(Math.random() * window.innerWidth),
             y = Math.floor(Math.random() * window.innerHeight);
 
-        console.log(x, y);
+        //samples.push({x: x, y: y});
         samples.push("newSquare(" + x + ", " + y + ");");
 
         let square = newSquare(x, y);
@@ -73,7 +94,7 @@
             for (let y = 2 / 3 * density; y < window.innerHeight - 2 / 3 * density; y += density)
                 newSquare(x, y);
 
-        navmesh.path({radius: 8});
+        navmesh.path({radius: radiusSize});
 
         immediate = true;
 
@@ -88,7 +109,7 @@
         for (let i = 0; i < count; i++)
             newSquare(Math.floor(Math.random() * window.innerWidth), Math.floor(Math.random() * window.innerHeight));
 
-        navmesh.path({radius: 8});
+        navmesh.path({radius: radiusSize});
 
         immediate = true;
 
@@ -100,9 +121,60 @@
 
         let interval = setInterval(function() {
 
-            if (!count--) clearInterval(interval);
+            try {
+                randomSquare();
+            } catch (err) {
+                console.log(err);
+                console.log(samples.join("\n"));
+                clearInterval(interval);
+            }
 
-            randomSquare();
+            if (!count--) {
+                clearInterval(interval);
+                drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+            }
+
+        }, 1);
+
+    }
+
+    function addRemoveChaos(count) {
+
+        count = (count || 100) - 1;
+
+        let interval = setInterval(function() {
+
+            try {
+                let start = performance.now();
+                randomSquare();
+                addTimes.push(performance.now() - start);
+
+                let polygon = navmesh.statics[
+                    Math.floor(Math.random() * navmesh.statics.length)].drawingElement;
+
+                for (let i = 0; i < drawing.onRemove.length; i++)
+                    drawing.onRemove[i](polygon);
+
+                for (let i = 0; i < polygon.footprint.length; i++)
+                    polygon.footprint[i].detach();
+
+                polygon.detach();
+
+                start = performance.now();
+                navmesh.path({radius: radiusSize});
+                removeTimes.push(performance.now() - start);
+
+                randomSquare();
+            } catch (err) {
+                console.log(err);
+                console.log(samples.join("\n"));
+                clearInterval(interval);
+            }
+
+            if (!count--) {
+                clearInterval(interval);
+                drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+            }
 
         }, 1);
 
@@ -117,12 +189,21 @@
 
             console.clear();
             drawing.clear();
+
+            sampleSets.push(samples);
             samples = [];
             window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
 
-            immediateGridSimple(200);
+            //immediateGridSimple(200);
             //immediateChaos(500);
-            //nonimmediateChaos(100);
+            //nonimmediateChaos(10);
+
+            //addRemoveChaos(1000);
+
+            newSquare(672, 738);
+            newSquare(672, 762);
+
+            drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
 
             /*let density = 75;
 
@@ -233,6 +314,23 @@
             newSquare(860, 16);
             newSquare(1133, 27);*/
 
+            //Fixed issue when a grand-child and child would collapse at the same time
+            /*newSquare(188, 121);
+            newSquare(236, 192);
+            newSquare(802, 292);
+            newSquare(263, 928);
+            newSquare(738, 860);
+            newSquare(165, 537);
+            newSquare(1839, 35);
+            newSquare(97, 605);
+            newSquare(22, 288);*/
+
+            //Drop both edges of collapsed vertices
+            /*newSquare(1042, 235);
+            newSquare(1882, 120);
+            newSquare(1233, 120);
+            newSquare(1397, 85);*/
+
         });
 
     });
@@ -242,6 +340,18 @@
     Object.defineProperty(window, "samples", {
         get: function() {
             return samples;
+        }
+    });
+
+    Object.defineProperty(window, "timings", {
+        get: function() {
+            return [addTimes, removeTimes];
+        }
+    });
+
+    Object.defineProperty(window, "sampleSets", {
+        get: function() {
+            return sampleSets;
         }
     });
 
