@@ -321,6 +321,7 @@
 
     // link every hole into the outer loop, producing a single-ring polygon without holes
     function eliminateHoles(data, holeIndices, outerNode, dim) {
+
         var queue = [],
             i, len, start, end, list;
 
@@ -349,6 +350,7 @@
     // find a bridge between vertices that connects hole with an outer ring and and link it
     function eliminateHole(data, holeNode, outerNode) {
         outerNode = findHoleBridge(data, holeNode, outerNode);
+        //console.log("eliminateHole", outerNode);
         if (outerNode) {
             var b = splitPolygon(outerNode, holeNode);
             filterPoints(data, b, b.next);

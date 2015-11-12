@@ -97,8 +97,8 @@
                     new drawing.Path(this.contents[i])
                         .fill(this.contents[i].color).close().width(0).append().draw().temp();
                     new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
-                } else new drawing.Path(this.contents[i]).fill("rgba(0,0,0,.1)").close().width(0).append().draw().temp();
-                    //new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
+                } else new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
+                //new drawing.Path(this.contents[i]).fill("rgba(0,255,0,.2)").close().width(0).append().draw().temp();
 
         else {
             this.children[0].drawAll(simple);

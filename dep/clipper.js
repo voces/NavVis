@@ -1550,7 +1550,7 @@
     if (typeof(document) !== "undefined") window.Int128 = Int128;
     else self.Int128 = Int128;
     */
-    // ---------------------------------------------  
+    // ---------------------------------------------
     // Here starts the actual Clipper library:
     // Helper function to support Inheritance in Javascript
     if (typeof(Inherit) == 'undefined') {
@@ -3083,7 +3083,7 @@
                 //so we're outside the previous polygon ...
                 if (Math.abs(e.WindCnt) > 1) {
                     //outside prev poly but still inside another.
-                    //when reversing direction of prev poly use the same WC 
+                    //when reversing direction of prev poly use the same WC
                     if (e.WindDelta * edge.WindDelta < 0)
                         edge.WindCnt = e.WindCnt;
                     else
@@ -4208,7 +4208,7 @@
         ip.x = 0;
         ip.y = 0;
         var b1, b2;
-        //nb: with very large coordinate values, it's possible for SlopesEqual() to 
+        //nb: with very large coordinate values, it's possible for SlopesEqual() to
         //return false but for the edge.Dx value be equal due to double precision rounding.
         if (ClipperLib.ClipperBase.SlopesEqual(edge1, edge2, this.m_UseFullRange) || edge1.Dx == edge2.Dx) {
             if (edge2.Bot.y > edge1.Bot.y) {
@@ -5021,16 +5021,23 @@
                             //OutRec2 is contained by OutRec1 ...
                             outrec2.IsHole = !outrec.IsHole;
                             outrec2.FirstLeft = outrec;
+                            if (this.m_UsingPolyTree)
+                                this.FixupFirstLefts2(outrec2, outrec);
                         } else if (this.Poly2ContainsPoly1(outrec.Pts, outrec2.Pts)) {
                             //OutRec1 is contained by OutRec2 ...
                             outrec2.IsHole = outrec.IsHole;
                             outrec.IsHole = !outrec2.IsHole;
                             outrec2.FirstLeft = outrec.FirstLeft;
                             outrec.FirstLeft = outrec2;
+                            if (this.m_UsingPolyTree)
+                                this.FixupFirstLefts2(outrec, outrec2);
+                            //Fix goes here
                         } else {
                             //the 2 polygons are separate ...
                             outrec2.IsHole = outrec.IsHole;
                             outrec2.FirstLeft = outrec.FirstLeft;
+                            if (this.m_UsingPolyTree)
+                                this.FixupFirstLefts1(outrec, outrec2);
                         }
                         op2 = op;
                         //ie get ready for the next iteration
@@ -5127,8 +5134,8 @@
     };
     ClipperLib.Clipper.CleanPolygon = function(path, distance) {
         if (typeof(distance) == "undefined") distance = 1.415;
-        //distance = proximity in units/pixels below which vertices will be stripped. 
-        //Default ~= sqrt(2) so when adjacent vertices or semi-adjacent vertices have 
+        //distance = proximity in units/pixels below which vertices will be stripped.
+        //Default ~= sqrt(2) so when adjacent vertices or semi-adjacent vertices have
         //both x & y coords within 1 unit, then the second vertex will be stripped.
         var cnt = path.length;
         if (cnt == 0)
@@ -5767,7 +5774,7 @@
         return results;
     };
     // Removes points that doesn't affect much to the visual appearance.
-    // If middle point is at or under certain distance (tolerance) of the line segment between 
+    // If middle point is at or under certain distance (tolerance) of the line segment between
     // start and end point, the middle point is removed.
     ClipperLib.JS.Lighten = function(polygon, tolerance) {
         if (!(polygon instanceof Array)) return [];

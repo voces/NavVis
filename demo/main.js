@@ -9,10 +9,14 @@
 
         immediate = true,
         sampleSets = [],
-        samples, addTimes = [], removeTimes = [],
+        samples, addTimes = [], removeTimes = [], sampleStep = 0,
 
         squareSize = 8,
         radiusSize = 4;
+
+    samples = [{x: 1592, y: 653}, {x: 632, y: 334}, {x: 1504, y: 640}, {x: 1405, y: 37}, {x: 727, y: 471},
+        {x: 451, y: 941}, {x: 690, y: 590}, {x: 465, y: 66}, {x: 326, y: 951}, {x: 1216, y: 372},
+        {x: 1765, y: 424}, {x: 62, y: 619}, {x: 1467, y: 59}, {x: 13, y: 92}, {x: 183, y: 591}];
 
     /*let interval = setInterval(function() {
         try {
@@ -54,6 +58,7 @@
 
     function newSquare(x, y) {
 
+        samples.push({x: x, y: y});
         let square = new drawing.Path([
             p(x - squareSize, y + squareSize),
             p(x - squareSize, y - squareSize),
@@ -77,7 +82,7 @@
             y = Math.floor(Math.random() * window.innerHeight);
 
         //samples.push({x: x, y: y});
-        samples.push("newSquare(" + x + ", " + y + ");");
+        //samples.push("newSquare(" + x + ", " + y + ");");
 
         let square = newSquare(x, y);
 
@@ -155,9 +160,6 @@
                 for (let i = 0; i < drawing.onRemove.length; i++)
                     drawing.onRemove[i](polygon);
 
-                for (let i = 0; i < polygon.footprint.length; i++)
-                    polygon.footprint[i].detach();
-
                 polygon.detach();
 
                 start = performance.now();
@@ -166,8 +168,8 @@
 
                 randomSquare();
             } catch (err) {
-                console.log(err);
-                console.log(samples.join("\n"));
+                console.error(err);
+                console.log(samples);
                 clearInterval(interval);
             }
 
@@ -180,160 +182,188 @@
 
     }
 
+    //Cleaning: (([^,]*,){10}) with \1\n
     document.addEventListener("DOMContentLoaded", function () {
 
         document.addEventListener("keydown", function(e) {
 
+
+            switch (e.which) {
+
             //Only do stuff when N key is pressed
-            if (e.which !== 78) return;
+            case 78: testKey(); break;
 
-            console.clear();
-            drawing.clear();
+            //s
+            case 83: runSample(); break;
 
-            sampleSets.push(samples);
-            samples = [];
-            window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+            //k
+            case 75: stepSample(); break;
 
-            //immediateGridSimple(200);
-            //immediateChaos(500);
-            //nonimmediateChaos(10);
+            //d
+            case 68: deleteSample(); break;
 
-            //addRemoveChaos(1000);
+            //r
+            case 82: fullRun(); break;
 
-            newSquare(672, 738);
-            newSquare(672, 762);
+            //default: console.log(e.which);
 
-            drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
-
-            /*let density = 75;
-
-            let xL = density / 2;
-            function outer() {
-                if (xL >= window.innerWidth) {
-                    clearInterval(outer);
-                    return;
-                }
-
-                let yL = density / 2;
-                let inner = setInterval(function() {
-
-                    if (yL >= window.innerHeight) {
-                        clearInterval(inner);
-
-                        xL += density;
-
-                        if (xL < window.innerWidth) {
-                            outer();
-                            return;
-                        }
-                    }
-
-                    let x = xL, y = yL;
-                    let r = Math.random() * 100;
-                    if (r < 5) {
-                        x += (Math.floor(Math.random() * 2) * 2 - 1) * 25;
-                        y += (Math.floor(Math.random() * 2) * 2 - 1) * 25;
-                    } else if (r < 10) x += (Math.floor(Math.random() * 2) * 2 - 1) * 25;
-                    else if (r < 15) y += (Math.floor(Math.random() * 2) * 2 - 1) * 25;
-
-                    try { newSquare(x, y); }
-                    catch (err) {
-                        clearInterval(inner);
-                        clearInterval(outer);
-                        throw err;
-                    }
-
-                    yL += density;
-
-                }, 100);
             }
-
-            outer();*/
-
-            /*for (let xL = density / 2; xL < window.innerWidth; xL += density)
-                for (let yL = density / 2; yL < window.innerHeight; yL += density) {
-
-                }*/
-
-            //for (let i = 0; i < 100; i++)
-                //randomSquare();
-
-            /*newSquare(1726, 876);
-            newSquare(1339, 705);
-            newSquare(1348, 106);*/
-
-            /*newSquare(1791, 196);
-            newSquare(451, 696);
-            newSquare(1503, 897);*/
-
-            /*newSquare(623, 464);
-            newSquare(1706, 761);
-            newSquare(912, 530);*/
-
-            //If a polygon merges through a colinear point, the edge isn't always dropped;
-            //  Need to loop through all old points and check rPoint edge
-            /*newSquare(1343, 80);
-            newSquare(783, 725);
-            newSquare(10, 608);
-            newSquare(1658, 563);
-            newSquare(1501, 601);
-            newSquare(577, 851);
-            newSquare(779, 20);
-            newSquare(42, 579);
-            newSquare(310, 152);
-            newSquare(684, 558);
-            newSquare(702, 592);*/
-
-            //QuadTree [this.id] set to [] when a parent splits (changed to remove parent)
-            /*newSquare(1722, 594);
-            newSquare(1316, 572);
-            newSquare(1252, 159);
-            newSquare(1060, 81);
-            newSquare(999, 223);
-            newSquare(427, 306);
-            newSquare(949, 481);
-            newSquare(602, 745);
-            newSquare(214, 420);
-            newSquare(1722, 5);
-            newSquare(1123, 436);
-            newSquare(1347, 925);
-            newSquare(387, 699);
-            newSquare(1676, 277);
-            newSquare(1434, 112);
-            newSquare(1180, 417);
-            newSquare(1665, 433);
-            newSquare(273, 588);
-            newSquare(977, 405);
-            newSquare(290, 493);*/
-
-            //Must drop collapsed edges of eaten polygons
-            /*newSquare(1774, 20);
-            newSquare(309, 879);
-            newSquare(1573, 16);
-            newSquare(335, 231);
-            newSquare(860, 16);
-            newSquare(1133, 27);*/
-
-            //Fixed issue when a grand-child and child would collapse at the same time
-            /*newSquare(188, 121);
-            newSquare(236, 192);
-            newSquare(802, 292);
-            newSquare(263, 928);
-            newSquare(738, 860);
-            newSquare(165, 537);
-            newSquare(1839, 35);
-            newSquare(97, 605);
-            newSquare(22, 288);*/
-
-            //Drop both edges of collapsed vertices
-            /*newSquare(1042, 235);
-            newSquare(1882, 120);
-            newSquare(1233, 120);
-            newSquare(1397, 85);*/
 
         });
 
     });
+
+    function fullRun() {
+        drawing.clear();
+
+        window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+        for (let i = 0; i < samples.length; i++)
+            newSquare(samples[i].x, samples[i].y);
+
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+    }
+
+    function runSample() {
+        //console.clear();
+        drawing.clear();
+
+        console.log("testing", sampleStep);
+
+        window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+        try {
+            for (let i = 0; i < samples.length; i++)
+                if (sampleStep !== i)
+                    newSquare(samples[i].x, samples[i].y);
+        } catch (err) {
+            console.error(err);
+        }
+
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+
+    }
+
+    function deleteSample() {
+        console.log("deleting", sampleStep);
+        samples.splice(sampleStep, 1);
+        runSample();
+    }
+
+    function stepSample() {
+        console.log("keeping", sampleStep);
+        sampleStep++;
+        runSample();
+    }
+
+    function testKey() {
+        console.clear();
+        drawing.clear();
+
+        sampleSets.push(samples);
+        samples = [];
+        window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+        //immediateGridSimple(200);
+        //immediateChaos(500);
+        // nonimmediateChaos(2000);
+
+        addRemoveChaos(1000);
+
+        // drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+
+        /*newSquare(1726, 876);
+        newSquare(1339, 705);
+        newSquare(1348, 106);*/
+
+        /*newSquare(1791, 196);
+        newSquare(451, 696);
+        newSquare(1503, 897);*/
+
+        /*newSquare(623, 464);
+        newSquare(1706, 761);
+        newSquare(912, 530);*/
+
+        //If a polygon merges through a colinear point, the edge isn't always dropped;
+        //  Need to loop through all old points and check rPoint edge
+        /*newSquare(1343, 80);
+        newSquare(783, 725);
+        newSquare(10, 608);
+        newSquare(1658, 563);
+        newSquare(1501, 601);
+        newSquare(577, 851);
+        newSquare(779, 20);
+        newSquare(42, 579);
+        newSquare(310, 152);
+        newSquare(684, 558);
+        newSquare(702, 592);*/
+
+        //QuadTree [this.id] set to [] when a parent splits (changed to remove parent)
+        /*newSquare(1722, 594);
+        newSquare(1316, 572);
+        newSquare(1252, 159);
+        newSquare(1060, 81);
+        newSquare(999, 223);
+        newSquare(427, 306);
+        newSquare(949, 481);
+        newSquare(602, 745);
+        newSquare(214, 420);
+        newSquare(1722, 5);
+        newSquare(1123, 436);
+        newSquare(1347, 925);
+        newSquare(387, 699);
+        newSquare(1676, 277);
+        newSquare(1434, 112);
+        newSquare(1180, 417);
+        newSquare(1665, 433);
+        newSquare(273, 588);
+        newSquare(977, 405);
+        newSquare(290, 493);*/
+
+        //Must drop collapsed edges of eaten polygons
+        /*newSquare(1774, 20);
+        newSquare(309, 879);
+        newSquare(1573, 16);
+        newSquare(335, 231);
+        newSquare(860, 16);
+        newSquare(1133, 27);*/
+
+        //Fixed issue when a grand-child and child would collapse at the same time
+        /*newSquare(188, 121);
+        newSquare(236, 192);
+        newSquare(802, 292);
+        newSquare(263, 928);
+        newSquare(738, 860);
+        newSquare(165, 537);
+        newSquare(1839, 35);
+        newSquare(97, 605);
+        newSquare(22, 288);*/
+
+        //Drop both edges of collapsed vertices
+        /*newSquare(1042, 235);
+        newSquare(1882, 120);
+        newSquare(1233, 120);
+        newSquare(1397, 85);*/
+
+        //Clipper & Earcut don't play nice with holes that expose themselves
+        /*newSquare(72, 38);
+        newSquare(72, 62);*/
+
+        //Fixed an issue inside ClipperLib that caused the PolyTree to be incorrect
+        //Posted fix on JSClipper: http://sourceforge.net/p/jsclipper/tickets/7/
+        /*{x: 1329, y: 423}, {x: 1596, y: 36}, {x: 324, y: 368}, {x: 1608, y: 399}, {x: 1120, y: 111},
+            {x: 1279, y: 101}, {x: 952, y: 197}, {x: 1401, y: 186}, {x: 1554, y: 71}, {x: 1011, y: 388},
+            {x: 1036, y: 219}, {x: 1170, y: 178}, {x: 1224, y: 403}, {x: 1377, y: 328}, {x: 1205, y: 383},
+            {x: 1311, y: 389}*/
+
+        //Fixed an issue relating to precision (requires scaling in subtract)
+        // newSquare(632, 334);
+        // newSquare(451, 941);
+        // newSquare(465, 66);
+        // newSquare(62, 619);
+        // newSquare(13, 92);
+        // newSquare(183, 591);
+    }
 
     window.navmesh = navmesh;
 
