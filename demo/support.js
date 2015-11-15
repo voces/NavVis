@@ -106,4 +106,12 @@
     window.pointListToString = pointListToString;
     window.addToStringToPointList = addToStringToPointList;
 
+    window.jsonToJS = function(json) {
+        json = json.replace(/(([^,]*,){15})/g, "$1\n");
+        json = json.replace(/,([0-9])/g, ", $1");
+        json = json.replace(/,\[/g, ", [");
+
+        return json;
+    };
+
 }(window));

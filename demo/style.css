@@ -9,6 +9,10 @@ svg {
     height: 100%;
 }
 
+svg text {
+    font-size: 15%;
+}
+
 #pos {
     position: absolute;
     bottom: 0.75em;

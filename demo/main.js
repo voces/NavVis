@@ -1,22 +1,36 @@
-
+/*eslint-disable no-console, no-unused-vars*/
 (function (window) {
     "use strict";
 
-    let drawing = window.drawing,
+    let $ = window.$,
+        drawing = window.drawing,
         NavMesh = window.NavMesh,
+
+        pos,
 
         navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight),
 
         immediate = true,
+
+        history = [], histories = [], historyStep = 0,
+        historyAdjuster = [],
+
         sampleSets = [],
         samples, addTimes = [], removeTimes = [], sampleStep = 0,
 
-        squareSize = 8,
-        radiusSize = 4;
+        squareSize = 4,
+        radiusSize = 2,
 
-    samples = [{x: 1592, y: 653}, {x: 632, y: 334}, {x: 1504, y: 640}, {x: 1405, y: 37}, {x: 727, y: 471},
-        {x: 451, y: 941}, {x: 690, y: 590}, {x: 465, y: 66}, {x: 326, y: 951}, {x: 1216, y: 372},
-        {x: 1765, y: 424}, {x: 62, y: 619}, {x: 1467, y: 59}, {x: 13, y: 92}, {x: 183, y: 591}];
+        testHistory = [
+            ["add", 1329, 423], ["add", 1596, 36], ["add", 324, 368], ["add", 1608, 399], ["add", 1120, 111],
+            ["add", 1279, 101], ["add", 952, 197], ["add", 1401, 186], ["add", 1554, 71], ["add", 1011, 388],
+            ["add", 1036, 219], ["add", 1170, 178], ["add", 1224, 403], ["add", 1377, 328], ["add", 1205, 383],
+            ["add", 1311, 389]
+        ];
+        /*testHistory = [
+            ["add", 137, 63], ["add", 365, 38], ["remove", 365, 38], ["add", 101, 58], ["add", 199, 111],
+            ["add", 162, 147], ["remove", 199, 111], ["add", 113, 77], ["add", 142, 113], ["add", 149, 79],
+            ["add", 185, 130], ["add", 208, 102], ["add", 179, 117], ["add", 205, 111]];*/
 
     /*let interval = setInterval(function() {
         try {
@@ -46,6 +60,18 @@
 
     });
 
+    function paintExPolygon(exPolygon) {
+
+        window.addToStringToPointList(exPolygon.outer);
+        new drawing.Path(exPolygon.outer).fill("rgba(0,0,0,0)").close().draw().append();
+
+        for (let i = 0; i < exPolygon.holes.length; i++) {
+            window.addToStringToPointList(exPolygon.holes[i]);
+            new drawing.Path(exPolygon.holes[i]).fill("rgba(0,0,0,0)").stroke("#666").dashed("10,10").width("1")
+                .close().draw().append();
+        }
+    }
+
     function pToString() {
         return this.x + "," + this.y;
     }
@@ -58,7 +84,7 @@
 
     function newSquare(x, y) {
 
-        samples.push({x: x, y: y});
+        //samples.push({x: x, y: y});
         let square = new drawing.Path([
             p(x - squareSize, y + squareSize),
             p(x - squareSize, y - squareSize),
@@ -69,6 +95,9 @@
             new drawing.Point(x + squareSize, y - squareSize).append(),
             new drawing.Point(x + squareSize, y + squareSize).append()*/
         ]).close().draw().append();
+
+        square.x = x;
+        square.y = y;
 
         for (let i = 0; i < drawing.onAdd.length; i++)
             drawing.onAdd[i](square);
@@ -139,11 +168,14 @@
                 drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
             }
 
-        }, 1);
+        }, 0);
 
     }
 
     function addRemoveChaos(count) {
+
+        histories.push(history);
+        history = [];
 
         count = (count || 100) - 1;
 
@@ -151,22 +183,26 @@
 
             try {
                 let start = performance.now();
-                randomSquare();
+                let square = randomSquare();
                 addTimes.push(performance.now() - start);
+                history.push(["add", square.x, square.y]);
 
-                let polygon = navmesh.statics[
-                    Math.floor(Math.random() * navmesh.statics.length)].drawingElement;
+                let polygonIndex = Math.floor(Math.random() * navmesh.statics.length);
+                square = navmesh.statics[polygonIndex].drawingElement;
 
                 for (let i = 0; i < drawing.onRemove.length; i++)
-                    drawing.onRemove[i](polygon);
+                    drawing.onRemove[i](square);
 
-                polygon.detach();
+                square.detach();
+                history.push(["remove", square.x, square.y]);
 
                 start = performance.now();
                 navmesh.path({radius: radiusSize});
                 removeTimes.push(performance.now() - start);
 
-                randomSquare();
+                square = randomSquare();
+                history.push(["add", square.x, square.y]);
+
             } catch (err) {
                 console.error(err);
                 console.log(samples);
@@ -182,28 +218,105 @@
 
     }
 
+    function fullHistory() {
+
+        drawing.clear();
+        window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+        for (let i = 0; i < testHistory.length; i++)
+            if (testHistory[i][0] === "add")
+                newSquare(testHistory[i][1], testHistory[i][2]);
+            else if (testHistory[i][0] === "remove")
+                for (let n = 0; n < navmesh.statics.length; n++)
+                    if (navmesh.statics[n].drawingElement.x === testHistory[i][1] &&
+                    navmesh.statics[n].drawingElement.y === testHistory[i][2]) {
+                        let polygon = navmesh.statics[n].drawingElement;
+
+                        for (let i = 0; i < drawing.onRemove.length; i++)
+                            drawing.onRemove[i](polygon);
+
+                        polygon.detach();
+
+                        break;
+                    }
+
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+
+    }
+
+    function runHistory() {
+
+        drawing.clear();
+        window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
+
+        for (let i = 0; i < testHistory.length; i++)
+            if (historyStep !== i)
+                if (testHistory[i][0] === "add")
+                    newSquare(testHistory[i][1], testHistory[i][2]);
+                else if (testHistory[i][0] === "remove")
+                    for (let n = 0; n < navmesh.statics.length; n++)
+                        if (navmesh.statics[n].drawingElement.x === testHistory[i][1] &&
+                        navmesh.statics[n].drawingElement.y === testHistory[i][2]) {
+                            let polygon = navmesh.statics[n].drawingElement;
+
+                            for (let i = 0; i < drawing.onRemove.length; i++)
+                                drawing.onRemove[i](polygon);
+
+                            polygon.detach();
+
+                            break;
+                        }
+
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+        pos.text(Math.floor(historyStep / testHistory.length * 100) + "%");
+
+    }
+
+    function keepHistoryStep() {
+
+        console.log("keeping", historyStep, testHistory.length);
+        historyStep++;
+        runHistory();
+
+    }
+
+    function deleteHistoryStep() {
+
+        console.log("removing", historyStep, testHistory.length);
+        testHistory.splice(historyStep, 1);
+        runHistory();
+
+    }
+
     //Cleaning: (([^,]*,){10}) with \1\n
     document.addEventListener("DOMContentLoaded", function () {
 
-        document.addEventListener("keydown", function(e) {
+        pos = $("#pos");
 
+        document.addEventListener("keydown", function(e) {
 
             switch (e.which) {
 
             //Only do stuff when N key is pressed
             case 78: testKey(); break;
 
+            //r
+            case 82: fullHistory(); break;
+
             //s
-            case 83: runSample(); break;
+            case 83: runHistory(); break;
 
             //k
-            case 75: stepSample(); break;
+            case 75: keepHistoryStep(); break;
 
             //d
-            case 68: deleteSample(); break;
+            case 68: deleteHistoryStep(); break;
+
+            //s
+            /*case 83: runSample(); break;
 
             //r
-            case 82: fullRun(); break;
+            case 82: fullRun(); break;*/
 
             //default: console.log(e.which);
 
@@ -214,14 +327,14 @@
     });
 
     function fullRun() {
-        drawing.clear();
 
+        drawing.clear();
         window.navmesh = navmesh = new NavMesh(0, 0, window.innerWidth, window.innerHeight);
 
         for (let i = 0; i < samples.length; i++)
             newSquare(samples[i].x, samples[i].y);
 
-        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
     }
 
     function runSample() {
@@ -241,6 +354,7 @@
         }
 
         drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+        pos.text(Math.floor(sampleStep / samples.length * 100) + "%");
 
     }
 
@@ -266,11 +380,11 @@
 
         //immediateGridSimple(200);
         //immediateChaos(500);
-        // nonimmediateChaos(2000);
+        // nonimmediateChaos(3000);
 
-        addRemoveChaos(1000);
+        addRemoveChaos(100);
 
-        // drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+        // drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
 
         /*newSquare(1726, 876);
         newSquare(1339, 705);
@@ -363,9 +477,25 @@
         // newSquare(62, 619);
         // newSquare(13, 92);
         // newSquare(183, 591);
+
+        //Fixed an issue relating to holes with one exterior vertex (merges it into outer)
+        // [{x: 1836, y: 818}, {x: 1286, y: 690}, {x: 1681, y: 618}, {x: 1777, y: 774}, {x: 887, y: 848},
+        //     {x: 1754, y: 765}]
+
+        // Fixed an issue relating to holes (updated earcut)
+        // [{x: 787, y: 240}, {x: 1621, y: 641}, {x: 1662, y: 722}, {x: 833, y: 445}, {x: 1256, y: 772},
+        //     {x: 1455, y: 493}];
+
+        // Fixed an issue relating to no setting edges for quicky-merged polygons
+        // [{x: 1256, y: 104}, {x: 864, y: 237}, {x: 679, y: 323}, {x: 390, y: 341}, {x: 524, y: 75},
+        //     {x: 926, y: 303}, {x: 752, y: 542}, {x: 864, y: 448}, {x: 645, y: 404}, {x: 839, y: 126},
+        //     {x: 690, y: 336}, {x: 594, y: 127}, {x: 887, y: 474}, {x: 690, y: 288}, {x: 648, y: 396},
+        //     {x: 611, y: 265}, {x: 812, y: 116}, {x: 760, y: 382}, {x: 801, y: 126}, {x: 644, y: 151},
+        //     {x: 666, y: 162}, {x: 857, y: 332}]
     }
 
     window.navmesh = navmesh;
+    window.paintExPolygon = paintExPolygon;
 
     Object.defineProperty(window, "samples", {
         get: function() {
@@ -385,4 +515,23 @@
         }
     });
 
+    Object.defineProperty(window, "history", {
+        get: function() {
+            return history;
+        }
+    });
+
+    Object.defineProperty(window, "histories", {
+        get: function() {
+            return histories;
+        }
+    });
+
+    Object.defineProperty(window, "testHistory", {
+        get: function() {
+            return testHistory;
+        }
+    });
+
 }(window));
+/*eslint-enable no-console, no-unused-vars*/

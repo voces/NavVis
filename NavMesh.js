@@ -427,10 +427,15 @@
         /*console.log("\t\t\t", goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB),
             edge.cells[0].length), goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB),
             edge.cells[1].length));*/
-        /*console.log(pointA, pointB);
-        console.log(edge);
-        console.log(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA));
-        console.log(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB));*/
+        // console.log(goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length));
+        // console.log(goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length));
+        // console.log(goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length));
+        // console.log(pointA, pointB);
+        // console.log(edge);
+        // console.log(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA,
+        //   geo.orientation(rPoint(edge.cells[0], pointA), lPoint(edge.cells[1], pointA), pointA) !== 1);
+        // console.log(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB,
+        //   geo.orientation(rPoint(edge.cells[1], pointB), lPoint(edge.cells[0], pointB), pointB) !== 1);
         if (goingLeft(edge.cells[0].indexOf(pointA), edge.cells[0].indexOf(pointB), edge.cells[0].length))
 
             if (goingLeft(edge.cells[1].indexOf(pointA), edge.cells[1].indexOf(pointB), edge.cells[1].length))
@@ -488,7 +493,7 @@
 
         // console.log(polygon.id, polygon.colorName);
         // console.log(vertices);
-        // if (polygon.id === 36) alertEnabled = true;
+        // if (polygon.id === 140) alertEnabled = true;
 
         for (let i = 0; i < vertices.length; i++) {
 
@@ -504,8 +509,9 @@
 
             //if (edge.id === 26) console.log("EDGE!", polygon.id, polygon.colorName);
 
-            //console.log("\t", i, "test", pointA.toString(), pointB.toString());
-            //if (edge.cells[0]) console.log("\t\t", edge.cells[0].id, edge.cells[0].colorName);
+            // console.log("\t", i, "test", pointA.toString(), pointB.toString());
+            // if (edge.cells[0]) console.log("\t\ta", edge.cells[0].id, edge.cells[0].colorName);
+            // if (edge.cells[1]) console.log("\t\tb", noAdd, edge.cells[1].id, edge.cells[1].colorName);
 
             //Push the triangle into the polygons that use the pair (edge), check if we now have both sides of said
             //  edge. Check to see if we can add the polygons that share the edge together (simple 180 angle testing)
@@ -528,14 +534,18 @@
                 //Loop through the points that make up the new cell
                 for (let n = 0; n < edge.cells[1].length; n++) {
 
+                    // console.log("?", n, edge.cells[1].length);
+
                     //Grab an edge of the point
                     let tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
 
-                    //console.log(n, edge.toString(), tEdge.toString ());
-
                     //Skip if we're working on the dying edge
-                    if (edge === tEdge) continue;
-                    else if (polygon.indexOf(tEdge[0]) < 0 || polygon.indexOf(tEdge[1]) < 0) {
+                    if (edge === tEdge) {
+                        // console.log("d", tEdge.toString());
+                        continue;
+                    } else if (polygon.indexOf(tEdge[0]) < 0 || polygon.indexOf(tEdge[1]) < 0) {
+
+                        // console.log("e", tEdge.toString());
 
                         if (tEdge.cells[0] === edge.cells[1]) tEdge.cells.shift();
                         else if (tEdge.cells[1] === edge.cells[1]) tEdge.cells.pop();
@@ -543,8 +553,16 @@
                         //console.log(tEdge[0].toString(), tEdge[1].toString(), tEdge.cells.slice(0));
                         if (tEdge.cells.length === 0) this.edgeSet.dropEdge(tEdge);
 
-                    } else if (tEdge.cells[0] === edge.cells[1]) tEdge.cells[0] = polygon;
-                    else if (tEdge.cells[1] === edge.cells[1]) tEdge.cells[1] = polygon;
+                    } else if (tEdge.cells[0] === edge.cells[1]) {
+                        // console.log("a", tEdge.toString(), tEdge.cells[0].id, polygon.id);
+                        tEdge.cells[0] = polygon;
+                    } else if (tEdge.cells[1] === edge.cells[1]) {
+                        // console.log("b", tEdge.toString(), tEdge.cells[1].id, polygon.id);
+                        tEdge.cells[1] = polygon;
+                    } else {
+                        // console.log("c", tEdge.toString(), edge.cells[1].id, polygon.id);
+                        tEdge.cells.push(polygon);
+                    }
 
                 }
 
@@ -569,6 +587,8 @@
                 if (index >= 0) polygons.splice(index, 1);
                 else if (typeof edge.cells[1][this.walkableQT.id] !== "undefined")
                     this.walkableQT.remove(edge.cells[1]);
+
+                break;
 
             }
 
@@ -616,7 +636,7 @@
 
         //If the polygon was merged
         } else if (!noAdd && !addPolygon) {
-            //console.log("c");
+            // console.log("c");
             this.mergeInPolygon(polygon, polygons, true);
         }
 
@@ -671,6 +691,7 @@
         cpr.Execute(ClipperLib.ClipType.ctDifference, result,
                     ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
 
+        // console.log(result);
         result = ClipperLib.JS.PolyTreeToExPolygons(result);
         /*eslint-enable new-cap*/
         // console.log(JSON.stringify(result, null, "\t"));
@@ -717,6 +738,8 @@
             }
         }
 
+        // console.log(list, indicies);
+
         //Get the raw triangles from ear cut
         trianglesRaw = earcut(list, indicies);
 
@@ -738,12 +761,13 @@
             triangle.colorName = color[0];
             triangle.color = color[1];
 
-            //console.log(triangle.id, triangle.colorName, a.toString(), b.toString(), c.toString());
+            let t = [a, b, c];
+            t.color = triangle.color;
 
             // new drawing.Path(triangle).fill(triangle.color).close().width(0).append().draw().temp();
 
-            /*for (n = 0; n < polygons.length; n++)
-                console.log("\t", polygons[n].id, polygons[n].colorName);*/
+            // for (let n = 0; n < polygons.length; n++)
+            //     console.log("\t", polygons[n].id, polygons[n].colorName);
 
             //Merge in the new triangle
             this.mergeInPolygon(triangle, polygons);
@@ -758,7 +782,7 @@
             //             new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
             //             new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
             //         ]).close().width(0).append().draw().temp();
-            //      alert();
+            //     alert();
             // }
             // console.log("");
 
@@ -827,13 +851,34 @@
 
     }
 
-    function holeSplitsPolygon(polygon, hole) {
+    function checkSharedVertex(outer, holes) {
+
+        for (let i = 0; i < holes.length; i++)
+            for (let n = 0; n < holes[i].length; n++)
+                for (let t = outer.length - 1; t >= 0; t--)
+                    if (pointEqual(holes[i][n], outer[t]))
+                        return [i, n, t];
+
+        return false;
+
+    }
+
+    function fixedSharedVertex(outer, hole, outerStart, holeStart) {
+
+        return outer.slice(outerStart + 1, outer.length)
+            .concat(outer.slice(0, outerStart + 1))
+            .concat(hole.slice(holeStart + 1, hole.length))
+            .concat(hole.slice(0, holeStart + 1));
+
+    }
+
+    /*function holeSplitsPolygon(polygon, hole) {
 
         for (let i = 0, corners = []; i < polygon.length; i++)
             for (let n = 0; n < hole.length; n++)
                 if (pointEqual(polygon[i], hole[n]) && corners.push([i, n]) === 2)
                     return corners;
-    }
+    }*/
 
     //This image shows two polygons that are too malformed for earcut
     //Left is an "exterior" hole, right is a "splitting" hole
@@ -852,6 +897,12 @@
             let share;
             while (share = checkSharedEdge(polygons[i].outer, polygons[i].holes)) {
                 polygons[i].outer = fixedSharedEdge(polygons[i].outer, polygons[i].holes[share[0]],
+                    share[2], share[1]);
+                polygons[i].holes.splice(share[0]);
+            }
+
+            while (share = checkSharedVertex(polygons[i].outer, polygons[i].holes)) {
+                polygons[i].outer = fixedSharedVertex(polygons[i].outer, polygons[i].holes[share[0]],
                     share[2], share[1]);
                 polygons[i].holes.splice(share[0]);
             }
@@ -881,7 +932,7 @@
             let clippedMesh = subtract(oldPolygons, persistantPolygons);
             // console.log(clippedMesh);
 
-            cleanPolygons(clippedMesh);
+            // cleanPolygons(clippedMesh);
 
             //Loop through all the returned meshes; clip them one at a time
             for (let i = 0; i < clippedMesh.length; i++) {
@@ -928,11 +979,12 @@
             let affectedMeshes = this.meshIntersectMultiple(newPolygons);
 
             this.killAffected(affectedMeshes);
-
+            // console.log(affectedMeshes);
+            // console.log(newPolygons);
             //Subtract the new polygons from the old mesh; store it in clippedMesh
             let clippedMesh = subtract(affectedMeshes, newPolygons);
 
-            cleanPolygons(clippedMesh);
+            // cleanPolygons(clippedMesh);
             // console.log(clippedMesh);
             //Loop through all the returned meshes; clip them one at a time
             for (let i = 0; i < clippedMesh.length; i++) {

@@ -38,10 +38,18 @@
 
         temp() {
             tempStuff.push(this);
+
+            return this;
         }
 
         stroke(color) {
             if (this.element) this.element.setAttribute("stroke", color);
+
+            return this;
+        }
+
+        dashed(dashDetails) {
+            if (this.element) this.element.setAttribute("stroke-dasharray", dashDetails);
 
             return this;
         }
