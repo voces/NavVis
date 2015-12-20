@@ -30,9 +30,11 @@
 
     }
 
-    class PointSet {
+    class PointSet extends Array {
 
         constructor() {
+            super();
+
             this.points = new Map();
             this.pointCount = 0;
         }
@@ -43,6 +45,7 @@
             point.id = this.pointCount++;
 
             this.points.set(x + "," + y, point);
+            this.push(point);
 
             return point;
 

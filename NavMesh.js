@@ -5,17 +5,14 @@
     let ClipperLib = window.ClipperLib,
         geo = window.geo,
         //PriorityQueue = window.PriorityQueue,
-        //RecentArray = window.RecentArray,
         DQuadTree = window.DQuadTree,
-        //QuadTree = window.QuadTree,
-        //ExtendedArray = window.ExtendedArray,
 
         drawing = window.drawing,
 
         Color = window.Color,
 
         PointSet = window.PointSet,
-        Point = window.Point,
+        // Point = window.Point,
         EdgeSet = window.EdgeSet,
 
         earcut = window.earcut,
@@ -130,6 +127,21 @@
 
     };
 
+    Base.prototype.pointToPolygon = function(point) {
+
+        let query = this.walkableQT.queryPoint(point.x, point.y, point.radius),
+
+            result;
+
+        while (result = query.next().value)
+
+            for (let i = 0; i < result.length; i++)
+
+                if (geo.pointInPolygon(point, result[i]))
+                    return result[i];
+
+    };
+
     Base.prototype.meshIntersectRough = function(polygon, check, source) {
 
         source = source || this.walkableQT;
@@ -159,6 +171,7 @@
 
                         //Add and mark the mesh
                         meshes.push(result[i]);
+                        // console.log("meshIntersectRough", result[i]);
                         result[i].meshIntersectRoughCheck = check;
                     }
 
@@ -172,11 +185,16 @@
 
     //Returns true if the boxes of two polygons intersect
     function boxIntersectionTest(polygonA, polygonB) {
+
+        // console.log(polygonA.id, polygonA.max.x < polygonB.min.x, polygonA.min.x > polygonB.max.x,
+        // polygonA.max.y < polygonB.min.y, polygonA.min.y > polygonB.max.y);
+        // console.log(polygonA.id, polygonA.min.y, polygonB.max.y);
+        // console.log(polygonA.slice(0));
+
         if (polygonA.max.x < polygonB.min.x || polygonA.min.x > polygonB.max.x ||
-            polygonA.max.y < polygonB.min.y || polygonA.min.y > polygonB.max.y) {
-            // console.log("boxIntersectionTest");
+            polygonA.max.y < polygonB.min.y || polygonA.min.y > polygonB.max.y)
+
             return false;
-        }
 
         return true;
     }
@@ -193,6 +211,10 @@
     //Returns true if the boxes and circles of two polygons intersect
     //  May extend this to do real intersection testing
     function polygonsIntersect(polygonA, polygonB) {
+
+        // console.log(polygonA.id, polygonB.id, boxIntersectionTest(polygonA, polygonB),
+        // circleIntersectionTest(polygonA, polygonB));
+
         if (boxIntersectionTest(polygonA, polygonB) && circleIntersectionTest(polygonA, polygonB))
             return true;
 
@@ -211,6 +233,8 @@
 
         // console.log(polygons);
 
+        // console.log("meshIntersectMultiple 1", meshes);
+
         //Do filtering after the fact
         for (let i = 0; i < meshes.length; i++)
             for (let n = 0; n < polygons.length; n++)
@@ -218,6 +242,8 @@
                     meshes2.push(meshes[i]);
                     break;
                 }
+
+        // console.log("meshIntersectMultiple 2", meshes2);
 
         //Inc our checker
         Base.meshIntersectMultipleChecks++;
@@ -540,10 +566,10 @@
                     let tEdge = this.edgeSet.getEdge(edge.cells[1][n], edge.cells[1][(n + 1) % edge.cells[1].length]);
 
                     //Skip if we're working on the dying edge
-                    if (edge === tEdge) {
-                        // console.log("d", tEdge.toString());
+                    if (edge === tEdge)
                         continue;
-                    } else if (polygon.indexOf(tEdge[0]) < 0 || polygon.indexOf(tEdge[1]) < 0) {
+
+                    else if (polygon.indexOf(tEdge[0]) < 0 || polygon.indexOf(tEdge[1]) < 0) {
 
                         // console.log("e", tEdge.toString());
 
@@ -553,27 +579,26 @@
                         //console.log(tEdge[0].toString(), tEdge[1].toString(), tEdge.cells.slice(0));
                         if (tEdge.cells.length === 0) this.edgeSet.dropEdge(tEdge);
 
-                    } else if (tEdge.cells[0] === edge.cells[1]) {
-                        // console.log("a", tEdge.toString(), tEdge.cells[0].id, polygon.id);
+                    } else if (tEdge.cells[0] === edge.cells[1])
                         tEdge.cells[0] = polygon;
-                    } else if (tEdge.cells[1] === edge.cells[1]) {
-                        // console.log("b", tEdge.toString(), tEdge.cells[1].id, polygon.id);
+
+                    else if (tEdge.cells[1] === edge.cells[1])
                         tEdge.cells[1] = polygon;
-                    } else {
-                        // console.log("c", tEdge.toString(), edge.cells[1].id, polygon.id);
-                        tEdge.cells.push(polygon);
-                    }
+
+                    else tEdge.cells.push(polygon);
 
                 }
 
                 //Drop collapsed edges (if edge.cells[0] was not equal to polygon)
                 for (let n = 0; n < original.length; n++)
                     if (polygon.indexOf(original[n]) < 0) {
-                        //console.log("collapse", original[n].toString(), original[n ? n - 1 : original.length - 1].toString());
+                        //console.log("collapse", original[n].toString(),
+                        //original[n ? n - 1 : original.length - 1].toString());
                         this.edgeSet.dropEdge(original[n], original[n ? n - 1 : original.length - 1]);
                         this.edgeSet.dropEdge(original[n], original[(n + 1) % original.length]);
-                    } else
-                        //console.log("keep", original[n].toString(), original[n ? n - 1 : original.length - 1].toString());
+                    }// else
+                        //console.log("keep", original[n].toString(),
+                        //original[n ? n - 1 : original.length - 1].toString());
 
                 //The edge was merged into two other polygons; drop it
                 this.edgeSet.dropEdge(edge);
@@ -585,8 +610,8 @@
                 //  doing a second merging, meaning we're merging two existing polygons... so remove one
                 let index = polygons.indexOf(edge.cells[1]);
                 if (index >= 0) polygons.splice(index, 1);
-                else if (typeof edge.cells[1][this.walkableQT.id] !== "undefined")
-                    this.walkableQT.remove(edge.cells[1]);
+
+                this.walkableQT.remove(edge.cells[1]);
 
                 break;
 
@@ -612,7 +637,7 @@
 
         //If the polygon was merged previously and not merged this time, update it and be done
         if (noAdd && addPolygon && typeof polygon[this.walkableQT.id] !== "undefined") {
-            //console.log("a");
+            // console.log("a");
             //polygons.splice(polygons.indexOf(edge.cells[1]), 1);
 
             this.walkableQT.remove(polygon);
@@ -622,22 +647,28 @@
         //If the polygon was not merged
         } else if (!noAdd && addPolygon) {
 
-            //console.log("b", polygon.id, polygon.colorName);
+            // console.log("b", polygon.id, polygon.colorName);
 
             //If the polygon was not merged previously, add it to the list and be done
             polygons.push(polygon);
 
             //If the polygon was merged previously, update it and be done
-            /*if (typeof polygon[this.walkableQT.id] !== "undefined") {
-                this.walkableQT.remove(polygon);
-                calcPolygonStats(polygon);
-                this.walkableQT.push(polygon);
-            }*/
+            //if (typeof polygon[this.walkableQT.id] !== "undefined") {
+            this.walkableQT.remove(polygon);
+            calcPolygonStats(polygon);
+            this.walkableQT.push(polygon);
+            //}
 
         //If the polygon was merged
-        } else if (!noAdd && !addPolygon) {
-            // console.log("c");
+        } else if (!noAdd && !addPolygon)
             this.mergeInPolygon(polygon, polygons, true);
+
+        else {
+            // console.log("d");
+            // console.log(polygon.id, polygon.colorName, polygon);
+            this.walkableQT.remove(polygon);
+            calcPolygonStats(polygon);
+            this.walkableQT.push(polygon);
         }
 
     };
@@ -668,7 +699,7 @@
 
     function subtract(subject, clip) {
 
-        let result = new ClipperLib.PolyTree();
+        let result = [];
 
         // console.log(JSON.stringify(subject, null, "\t"));
         // console.log(JSON.stringify(clip, null, "\t"));
@@ -681,6 +712,16 @@
         cpr.StrictlySimple = true;
         // console.log(JSON.stringify(subject, null, "\t"));
         // console.log(JSON.stringify(clip, null, "\t"));
+
+        cpr.AddPaths(subject, ClipperLib.PolyType.ptSubject, true);
+        cpr.Execute(ClipperLib.ClipType.ctUnion, result, ClipperLib.PolyFillType.pftNonZero,
+            ClipperLib.PolyFillType.pftNonZero);
+        subject = result;
+
+        result = new ClipperLib.PolyTree();
+
+        cpr.Clear();
+        cpr.StrictlySimple = true;
 
         cpr.AddPaths(subject, ClipperLib.PolyType.ptSubject, true);
         cpr.AddPaths(clip, ClipperLib.PolyType.ptClip, true);
@@ -712,10 +753,6 @@
 
     }
 
-    function pointEqual(a, b) {
-        return a.x === b.x && a.y === b.y;
-    }
-
     // let alertEnabled = false;
     Base.prototype.clip = function(parent, holes) {
 
@@ -742,6 +779,7 @@
 
         //Get the raw triangles from ear cut
         trianglesRaw = earcut(list, indicies);
+        // console.log(trianglesRaw);
 
         //Loop through all raw triangles
         for (let i = 0; i < trianglesRaw.length; i += 3) {
@@ -774,14 +812,18 @@
 
             // if (alertEnabled) {
             //     drawing.clearTemp(); this.walkableQT.drawAll();
-            //     for (let n = 0; n < polygons.length; n++)
+            //     for (let n = 0; n < polygons.length; n++) {
             //         new drawing.Path(polygons[n]).fill(polygons[n].color).close().width(0).append().draw().temp();
-            //     for (let n = i + 3; n < trianglesRaw.length; n += 3)
+            //         new drawing.Text(polygons[n].id, center(polygons[n]).x, center(polygons[n]).y).append().temp();
+            //     }
+            //     for (let n = i + 3; n < trianglesRaw.length; n += 3) {
             //         new drawing.Path([
             //             new Point(list[trianglesRaw[n] * 2], list[trianglesRaw[n] * 2 + 1]),
             //             new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
             //             new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
             //         ]).close().width(0).append().draw().temp();
+            //         //new drawing.Text("#", polygons[n].x, polygons[n].y).append().temp();
+            //     }
             //     alert();
             // }
             // console.log("");
@@ -820,141 +862,39 @@
                 index = tPair.cells.indexOf(affectedMeshes[i]);
                 if (index >= 0) tPair.cells.splice(index, 1);
 
-                //Remove the lefts/rights associated with the mesh from the point
-                /*affectedMeshes[i][n].lefts.delete(affectedMeshes[i]);
-                affectedMeshes[i][n].rights.delete(affectedMeshes[i]);*/
             }
 
         }
 
     };
 
-    function checkSharedEdge(outer, holes) {
-
-        for (let i = 0; i < holes.length; i++)
-            for (let n = 0; n < holes[i].length; n++)
-                for (let t = outer.length - 1; t >= 0; t--)
-                    if (pointEqual(holes[i][n], outer[t]) &&
-                        pointEqual(holes[i][(n + 1) % holes[i].length], outer[t ? t - 1 : outer.length]))
-                        return [i, n, t];
-
-        return false;
-
-    }
-
-    function fixedSharedEdge(outer, hole, outerStart, holeStart) {
-
-        return outer.slice(0, outerStart)
-            .concat(hole.slice(holeStart + 2, hole.length))
-            .concat(hole.slice(0, holeStart))
-            .concat(outer.slice(outerStart, outer.length));
-
-    }
-
-    function checkSharedVertex(outer, holes) {
-
-        for (let i = 0; i < holes.length; i++)
-            for (let n = 0; n < holes[i].length; n++)
-                for (let t = outer.length - 1; t >= 0; t--)
-                    if (pointEqual(holes[i][n], outer[t]))
-                        return [i, n, t];
-
-        return false;
-
-    }
-
-    function fixedSharedVertex(outer, hole, outerStart, holeStart) {
-
-        return outer.slice(outerStart + 1, outer.length)
-            .concat(outer.slice(0, outerStart + 1))
-            .concat(hole.slice(holeStart + 1, hole.length))
-            .concat(hole.slice(0, holeStart + 1));
-
-    }
-
-    /*function holeSplitsPolygon(polygon, hole) {
-
-        for (let i = 0, corners = []; i < polygon.length; i++)
-            for (let n = 0; n < hole.length; n++)
-                if (pointEqual(polygon[i], hole[n]) && corners.push([i, n]) === 2)
-                    return corners;
-    }*/
-
-    //This image shows two polygons that are too malformed for earcut
-    //Left is an "exterior" hole, right is a "splitting" hole
-    //https://i.imgur.com/VVhOHJ6.png
-    function cleanPolygons(polygons) {
-
-        //Split & reform polygons with "splitting" holes
-        /*for (let i = 0; i < polygons.length; i++)
-            for (let n = 0, corners; n < polygons[i].holes.length; n++)
-                if (corners = holeSplitsPolygon(polygons[i].outer, polygons[i].holes[n])) {
-                    console.log(corners);
-                }*/
-
-        //Merge polygons with "exterior" holes
-        for (let i = 0; i < polygons.length; i++) {
-            let share;
-            while (share = checkSharedEdge(polygons[i].outer, polygons[i].holes)) {
-                polygons[i].outer = fixedSharedEdge(polygons[i].outer, polygons[i].holes[share[0]],
-                    share[2], share[1]);
-                polygons[i].holes.splice(share[0]);
-            }
-
-            while (share = checkSharedVertex(polygons[i].outer, polygons[i].holes)) {
-                polygons[i].outer = fixedSharedVertex(polygons[i].outer, polygons[i].holes[share[0]],
-                    share[2], share[1]);
-                polygons[i].holes.splice(share[0]);
-            }
-        }
-
-    }
-
     Base.prototype.update = function () {
 
         drawing.clearTemp();
 
-        let newMesh;
-
         //Only bother if there are some statics to remove
         if (this.deadStatics.length > 0) {
 
-            let oldPolygons = [];
+            let oldPolygons = [], polygon;
 
             for (let i = 0; i < this.deadStatics.length; i++) {
-                oldPolygons.push(this.deadStatics[i][this.navmesh.id].polygons[this.radius]);
-                this.obstacleQT.remove(this.deadStatics[i][this.navmesh.id].polygons[this.radius]);
+                polygon = this.deadStatics[i][this.navmesh.id].polygons[this.radius];
+
+                oldPolygons.push(polygon);
+                this.obstacleQT.remove(polygon);
+
             }
 
             let persistantPolygons = this.meshIntersectMultiple(oldPolygons, this.obstacleQT);
 
             //Subtract the still-existing polygons from the one's that are gone
             let clippedMesh = subtract(oldPolygons, persistantPolygons);
-            // console.log(clippedMesh);
-
-            // cleanPolygons(clippedMesh);
 
             //Loop through all the returned meshes; clip them one at a time
-            for (let i = 0; i < clippedMesh.length; i++) {
-
-                /*let share;
-                while (share = checkSharedEdge(clippedMesh[i].outer, clippedMesh[i].holes)) {
-                    clippedMesh[i].outer = fixedSharedEdge(clippedMesh[i].outer, clippedMesh[i].holes[share[0]],
-                        share[2], share[1]);
-                    clippedMesh[i].holes.splice(share[0]);
-                }*/
-
-
+            for (let i = 0; i < clippedMesh.length; i++)
 
                 //Clip it
-                newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
-
-                //Add to the walkableQT
-                for (let n = 0; n < newMesh.length; n++) {
-                    calcPolygonStats(newMesh[n]);
-                    this.walkableQT.push(newMesh[n]);
-                }
-            }
+                this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
 
             this.deadStatics = [];
 
@@ -986,25 +926,16 @@
 
             // cleanPolygons(clippedMesh);
             // console.log(clippedMesh);
+
             //Loop through all the returned meshes; clip them one at a time
-            for (let i = 0; i < clippedMesh.length; i++) {
+            for (let i = 0; i < clippedMesh.length; i++)
 
                 //Clip it
-                newMesh = this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
-
-                //Add to the walkableQT
-                for (let n = 0; n < newMesh.length; n++) {
-                    calcPolygonStats(newMesh[n]);
-                    this.walkableQT.push(newMesh[n]);
-                }
-            }
+                this.clip(clippedMesh[i].outer, clippedMesh[i].holes);
 
             this.newStatics = [];
 
         }
-
-        //alert();
-        //drawing.clearTemp(); this.walkableQT.drawAll();
 
     };
 
@@ -1036,6 +967,8 @@
      * @param {object} object - An object with .footprint
      */
     NavMesh.prototype.addStatic = function (polygon) {
+
+        // console.log("addStatic", polygon);
 
         //Quit if already added
         if (typeof polygon[this.id] === "object")
@@ -1125,20 +1058,29 @@
      * @param {Point} target - A target with .x and .y
      * @return {array} path - An array of points
      */
-    NavMesh.prototype.path = function (object/*, target*/) {
+    NavMesh.prototype.path = function (source, target) {
 
-        let base/*,
+        let base,
 
-            i*/;
+            sourcePolygon, targetPolygon;
 
         //Grab the base (if it doesn't exist, create it)
-        if (typeof this.indexedBases[object.radius] === "undefined")
-            this.bases.push(base = this.indexedBases[object.radius] = new Base(this, object.radius, this.statics));
+        if (typeof this.indexedBases[source.radius] === "undefined")
+            this.bases.push(base = this.indexedBases[source.radius] = new Base(this, source.radius, this.statics));
 
-        else base = this.indexedBases[object.radius];
+        else base = this.indexedBases[source.radius];
 
         //Update the base if required
         if (base.newStatics || base.deadStatics) base.update();
+
+        //Source and target at the same
+        if (source.x === target.x && source.y === target.y) return [source];
+
+        sourcePolygon = base.pointToPolygon(source);
+        targetPolygon = base.pointToPolygon(target);
+
+        //Source and target are in same area
+        if (sourcePolygon === targetPolygon) return [source, target];
 
         /*return false;
         //One or both points already trapped

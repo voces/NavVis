@@ -18,19 +18,14 @@
         sampleSets = [],
         samples, addTimes = [], removeTimes = [], sampleStep = 0,
 
-        squareSize = 4,
-        radiusSize = 2,
+        squareSize = 100,
+        radiusSize = 8,
 
         testHistory = [
-            ["add", 1329, 423], ["add", 1596, 36], ["add", 324, 368], ["add", 1608, 399], ["add", 1120, 111],
-            ["add", 1279, 101], ["add", 952, 197], ["add", 1401, 186], ["add", 1554, 71], ["add", 1011, 388],
-            ["add", 1036, 219], ["add", 1170, 178], ["add", 1224, 403], ["add", 1377, 328], ["add", 1205, 383],
-            ["add", 1311, 389]
-        ];
-        /*testHistory = [
-            ["add", 137, 63], ["add", 365, 38], ["remove", 365, 38], ["add", 101, 58], ["add", 199, 111],
-            ["add", 162, 147], ["remove", 199, 111], ["add", 113, 77], ["add", 142, 113], ["add", 149, 79],
-            ["add", 185, 130], ["add", 208, 102], ["add", 179, 117], ["add", 205, 111]];*/
+            ["add", 1700, 500], ["add", 200, 1400], ["add", 2900, 500], ["add", 200, 1100]
+        ],
+
+        source, target;
 
     /*let interval = setInterval(function() {
         try {
@@ -47,7 +42,10 @@
         navmesh.addStatic(path.footprint);
 
         //let start = performance.now();
-        if (immediate) navmesh.path({radius: radiusSize});
+        if (immediate)
+            console.log(navmesh.path(source, target));
+            //drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+        
         //addTimes.push(performance.now() - start);
 
     });
@@ -56,7 +54,7 @@
 
         navmesh.removeStatic(path.footprint);
 
-        if (immediate) navmesh.path({radius: radiusSize});
+        if (immediate) navmesh.path(source, target);
 
     });
 
@@ -132,6 +130,54 @@
 
         immediate = true;
 
+    }
+
+    function nonImmediateRandomGrid(size, density) {
+        size = size || 25;
+        density = density || size * 3;
+
+        histories.push(history);
+        history = [];
+
+        let squares = [], loop;
+
+        for (let x = 2/3 * density; x < window.innerWidth - 2/3 * density; x += density)
+            for (let y = 2/3 * density; y < window.innerHeight - 2/3 * density; y += density) {
+
+                let square = new drawing.Path([
+                    p(x - size, y + size),
+                    p(x - size, y - size),
+                    p(x + size, y - size),
+                    p(x + size, y + size)
+                ]).close().draw();
+
+                square.x = x;
+                square.y = y;
+
+                squares.push(square);
+            }
+
+        if (squares.length)
+            loop = setInterval(function() {
+
+                let rand = Math.floor(Math.random() * squares.length);
+                let square = squares[rand];
+                //console.log(rand, square, squares);
+                squares.splice(rand, 1);
+
+                square.append();
+
+                history.push(["add", square.x, square.y]);
+
+                for (let i = 0; i < drawing.onAdd.length; i++)
+                    drawing.onAdd[i](square);
+
+                if (!squares.length) {
+                    clearInterval(loop);
+                    drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+                }
+
+            }, 0);
     }
 
     function immediateChaos(count) {
@@ -240,7 +286,7 @@
                         break;
                     }
 
-        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+        drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
 
     }
 
@@ -292,6 +338,15 @@
     document.addEventListener("DOMContentLoaded", function () {
 
         pos = $("#pos");
+
+        source = new drawing.Point(16, 16, "blue").append();
+        target = new drawing.Point(window.innerWidth - 16, window.innerHeight - 16, "red").append();
+
+        setTimeout(function() {
+
+            console.log(navmesh.path(source, target));
+
+        }, 1000);
 
         document.addEventListener("keydown", function(e) {
 
@@ -382,7 +437,9 @@
         //immediateChaos(500);
         // nonimmediateChaos(3000);
 
-        addRemoveChaos(100);
+        // addRemoveChaos(100);
+
+        nonImmediateRandomGrid(10);
 
         // drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
 
@@ -492,6 +549,17 @@
         //     {x: 690, y: 336}, {x: 594, y: 127}, {x: 887, y: 474}, {x: 690, y: 288}, {x: 648, y: 396},
         //     {x: 611, y: 265}, {x: 812, y: 116}, {x: 760, y: 382}, {x: 801, y: 126}, {x: 644, y: 151},
         //     {x: 666, y: 162}, {x: 857, y: 332}]
+
+        // Fixed an issue relating to improper calculations in Clipper (work around includes adding, then subtracting)
+        // ["add", 1329, 423], ["add", 1596, 36], ["add", 324, 368], ["add", 1608, 399], ["add", 1120, 111],
+        // ["add", 1279, 101], ["add", 952, 197], ["add", 1401, 186], ["add", 1554, 71], ["add", 1011, 388],
+        // ["add", 1036, 219], ["add", 1170, 178], ["add", 1224, 403], ["add", 1377, 328], ["add", 1205, 383],
+        // ["add", 1311, 389]
+
+        // Fixed an issue relating to polygons not always recalculating their statics
+        // ["add", 1150, 250], ["add", 1000, 700], ["add", 700, 250], ["add", 250, 250], ["add", 550, 550]
+        //
+        // ["add", 100, 250], ["add", 850, 100], ["add", 250, 100]
     }
 
     window.navmesh = navmesh;

@@ -247,7 +247,8 @@
                        o2 === 0 && o1 === o4 && o3 !== o1 && o3 !== 0) {
 
                         if (t !== 0) polygons.unshift(polygons.splice(t, 1)[0]);
-						return polygons[0];
+
+                        return polygons[0];
                     }
             }
 
@@ -327,12 +328,12 @@
         }
 
         query = spatial.queryLine(start.x, start.y, end.x, end.y);
-        let count = 0,
-            doing = (start.x === 772 && start.y === 124 && end.x === 1148 && end.y === 260) ||
-                    (end.x === 772 && end.y === 124 && start.x === 1148 && start.y === 260);
-        if (doing) console.log(start, end);
+        // let count = 0,
+        //     doing = (start.x === 772 && start.y === 124 && end.x === 1148 && end.y === 260) ||
+        //             (end.x === 772 && end.y === 124 && start.x === 1148 && start.y === 260);
+        // if (doing) console.log(start, end);
         while ((polygons = query.next().value)) {
-            if (doing) console.log(count++, polygons);
+            // if (doing) console.log(count++, polygons);
             for (t = 0; t < polygons.length; t++) {
 
                 //Don't check things multiple times
@@ -478,9 +479,11 @@
 
         let combinedPolygon = new ClipperLib.Paths();
 
+        /*eslint-disable new-cap*/
         co.Clear();
         co.AddPaths(polygons, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
         co.Execute(combinedPolygon, 1);
+        /*eslint-enable new-cap*/
 
         if (combinedPolygon.length === 1)
             return combinedPolygon[0];
@@ -553,10 +556,11 @@
             polygon = mergePolygons(polygon);
             if (typeof polygon[0].x === "undefined")
                 polygon = polygon[0];
-            console.log("merged", polygon);
-        } console.log("passed", polygon);
+            // console.log("merged", polygon);
+        }
+        // console.log("passed", polygon);
 
-        if (typeof polygon.x === "number") console.error("invalid polygon!");
+        // if (typeof polygon.x === "number") console.error("invalid polygon!");
 
         for (i = 0; i < polygon.length; i++) {
             n = (i + 1) % polygon.length;
@@ -576,12 +580,13 @@
             }
 
         }
-        console.log(nearPoint);
+        // console.log(nearPoint);
         tPolygon = pointInPolygonsAll(nearPoint, polygons);
         if (tPolygon) {
 
             combinedPolygon = new ClipperLib.Paths();
 
+            /*eslint-disable new-cap*/
             co.Clear();
             co.AddPaths(tPolygon, ClipperLib.JoinType.jtMiter, ClipperLib.EndType.etClosedPolygon);
             co.Execute(combinedPolygon, 1);
@@ -590,6 +595,7 @@
             cpr.AddPaths([polygon, combinedPolygon[0]], ClipperLib.PolyType.ptClip, true);
             cpr.Execute(ClipperLib.ClipType.ctUnion, combinedPolygon,
                         ClipperLib.PolyFillType.pftNonZero, ClipperLib.PolyFillType.pftNonZero);
+            /*eslint-enable new-cap*/
 
             if (typeof combinedPolygon[0].x === "undefined")
                 combinedPolygon = combinedPolygon[0];

@@ -4,6 +4,9 @@
 
     let $ = window.$,
         geo = window.geo,
+        earcut = window.earcut,
+        Point = window.Point,
+        drawing = window.drawing,
         pos;
 
     function pointToString() {
@@ -113,5 +116,95 @@
 
         return json;
     };
+
+    window.drawExPolygon = function(exPolygon) {
+
+        addToStringToPointList(exPolygon.outer);
+        new drawing.Path(exPolygon.outer).fill("rgba(0,0,0,.5)").close().width(0).append().draw().temp();
+
+        for (let i = 0; i < exPolygon.holes.length; i++) {
+
+            addToStringToPointList(exPolygon.holes[i]);
+            new drawing.Path(exPolygon.holes[i]).fill("rgba(255,255,255,.5)").close().width(0).append().draw().temp();
+
+        }
+
+    };
+
+    window.tes = function(ex) {
+
+        Point = window.Point;
+
+        let parent = ex.outer, holes = ex.holes,
+
+            list = [], indicies = [],
+
+            trianglesRaw;
+
+        //Push all parents onto the list first
+        for (let i = 0; i < parent.length; i++) {
+            list.push(parent[i].x);
+            list.push(parent[i].y);
+        }
+
+        //Get the current index in list, push to holes, then push to list
+        for (let i = 0; i < holes.length; i++) {
+            indicies.push(list.length / 2);
+            for (let n = 0; n < holes[i].length; n++) {
+                list.push(holes[i][n].x);
+                list.push(holes[i][n].y);
+            }
+        }
+
+        //Get the raw triangles from ear cut
+        trianglesRaw = earcut(list, indicies);
+
+        for (let n = 0; n < trianglesRaw.length; n += 3)
+            new drawing.Path([
+                new Point(list[trianglesRaw[n] * 2], list[trianglesRaw[n] * 2 + 1]),
+                new Point(list[trianglesRaw[n + 1] * 2], list[trianglesRaw[n + 1] * 2 + 1]),
+                new Point(list[trianglesRaw[n + 2] * 2], list[trianglesRaw[n + 2] * 2 + 1])
+            ]).close().width(0.1).append().draw().temp();
+
+        /*eslint-disable no-console*/
+        console.log(list, indicies, trianglesRaw);
+        /*eslint-enable no-console*/
+
+    };
+
+    /*setTimeout(function() {
+
+        Point = window.Point;
+
+        let exPolygon = {
+            outer: [
+                new Point(10, 10),
+                new Point(25, 10),
+                new Point(25, 40),
+                new Point(10, 40)
+            ], holes: [
+                [
+                    new Point(15, 30),
+                    new Point(20, 35),
+                    new Point(10, 40)
+                ],
+                [
+                    new Point(15, 15),
+                    new Point(15, 20),
+                    new Point(20, 15)
+                ]
+            ]
+        };
+
+        window.drawExPolygon(exPolygon);
+
+        setTimeout(function() {
+
+            drawing.clearTemp();
+            window.tes(exPolygon);
+
+        }, 1000);
+
+    }, 1000);*/
 
 }(window));

@@ -97,8 +97,9 @@
                     new drawing.Path(this.contents[i])
                         .fill(this.contents[i].color).close().width(0).append().draw().temp();
                     new drawing.Text(this.contents[i].id, this.contents[i].x, this.contents[i].y).append().temp();
-                } else new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
-                //new drawing.Path(this.contents[i]).fill("rgba(0,255,0,.2)").close().width(0).append().draw().temp();
+                } else
+                    new drawing.Path(this.contents[i]).fill("rgba(0,255,0,.5)").close().width(0).append().draw().temp();
+                //new drawing.Path(this.contents[i]).fill("#7f7").close().width(0).append().draw().temp();
 
         else {
             this.children[0].drawAll(simple);
@@ -211,11 +212,11 @@
             while (cur && item[this.id].indexOf(cur) < 0)
                 cur = cur.parent;
 
-            if (cur) {
-                console.log("DOUBLE PUSH", item);
-                console.trace();
-                return;
-            }
+            // if (cur) {
+            //     console.error("DOUBLE PUSH", item);
+            //     console.trace();
+            //     return;
+            // }
         }
 
         //We've reached density; empty the contents and spill into children
@@ -339,7 +340,7 @@
         while (cell = cells.pop())
 
             //We have children; add them to cells and try again
-            if (cell.children.length > 0) {
+            if (cell.children && cell.children.length > 0) {
                 if (x - radius >= cell.x && y - radius >= cell.y) cells.push(cell.children[0]);
                 if (x - radius <= cell.x && y - radius >= cell.y) cells.push(cell.children[1]);
                 if (x - radius <= cell.x && y - radius <= cell.y) cells.push(cell.children[2]);

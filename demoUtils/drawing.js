@@ -76,6 +76,8 @@
             this.x = x;
             this.y = y;
 
+            this.radius = 5;
+
             this.element = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             this.element.obj = this;
 
@@ -84,6 +86,11 @@
             this.element.setAttribute("cy", y);
 
             if (color) this.element.style.fill = color;
+        }
+
+        radius(value) {
+            this.radius = value;
+            this.element.setAttribute("r", this.radius);
         }
 
         draw() {
@@ -383,6 +390,7 @@
         onRemove: onRemove,
         onChange: onChange,
         Point: Point,
+        Element: Element,
         Path: Path,
         Line: Line,
         Text: Text,

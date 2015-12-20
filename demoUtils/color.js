@@ -17,7 +17,8 @@
     }
 
     function rgbToHex(r, g, b) {
-        return "#" + pad((Math.round(r * 255) * 65536 + Math.round(g * 255) * 256 + Math.round(b * 255)).toString(16));
+        //return "#" + pad((Math.round(r * 255) * 65536 + Math.round(g * 255) * 256 + Math.round(b * 255)).toString(16));
+        return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, 0.8)`;
     }
 
     window.Color = {
