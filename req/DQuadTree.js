@@ -89,10 +89,8 @@
 
     DQuadTree.prototype.drawAll = function(simple) {
 
-        let i;
-
-        if (this.contents)
-            for (i = 0; i < this.contents.length; i++)
+        if (typeof this.contents === "object" && this.contents instanceof Array)
+            for (let i = 0; i < this.contents.length; i++)
                 if (!simple) {
                     new drawing.Path(this.contents[i])
                         .fill(this.contents[i].color).close().width(0).append().draw().temp();

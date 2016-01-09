@@ -42,10 +42,11 @@
         navmesh.addStatic(path.footprint);
 
         //let start = performance.now();
-        if (immediate)
+        if (immediate) {
             console.log(navmesh.path(source, target));
-            //drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
-        
+            drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+        }
+
         //addTimes.push(performance.now() - start);
 
     });
@@ -157,9 +158,18 @@
                 squares.push(square);
             }
 
-        if (squares.length)
+        if (squares.length) {
+            let flag = true;
             loop = setInterval(function() {
 
+                if (!flag) {
+                    clearInterval(loop);
+                    return;
+                }
+
+                flag = false;
+
+                // try {
                 let rand = Math.floor(Math.random() * squares.length);
                 let square = squares[rand];
                 //console.log(rand, square, squares);
@@ -174,10 +184,23 @@
 
                 if (!squares.length) {
                     clearInterval(loop);
-                    drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
+                    drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll();
+                    // for (let point of navmesh.bases[0].pointSet)
+                    //     for (let arc of point.visibility.values) {
+                    //         console.log(`new drawing.Arc(${point.x}, ${point.y}, ${arc.left}, ${arc.right}, 32);`);
+                    //         new drawing.Arc(point.x, point.y, arc.left, arc.right, 32).temp().append().draw();
+                    //     }
+
                 }
 
+                flag = true;
+                // } catch (err) {
+                //     console.error(err);
+                //     clearInterval(loop);
+                // }
+
             }, 0);
+        }
     }
 
     function immediateChaos(count) {
@@ -439,7 +462,7 @@
 
         // addRemoveChaos(100);
 
-        nonImmediateRandomGrid(10);
+        nonImmediateRandomGrid(200);
 
         // drawing.clearTemp(); navmesh.bases[0].walkableQT.drawAll(true);
 

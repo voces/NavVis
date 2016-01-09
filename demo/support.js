@@ -207,4 +207,15 @@
 
     }, 1000);*/
 
+    function scanVisibility() {
+
+        let point = navmesh.bases[0].pointSet[6];
+        if (point.x !== 795) point = navmesh.bases[0].pointSet[10];
+
+        return point.toString() + " --> " + [...point.visiblePoints].join(" | ");
+
+
+    }
+    window.scanVisibility = scanVisibility;
+
 }(window));

@@ -3,6 +3,7 @@
     "use strict";
 
     let ClipperLib = window.ClipperLib,
+        Angle = window.Angle,
 
         cpr = new ClipperLib.Clipper(),
         co = new ClipperLib.ClipperOffset(2, 0.25),
@@ -16,6 +17,81 @@
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    function angleBetweenPoints(a, b) {
+        return Math.atan2(b.y - a.y, b.x - a.x);
+    }
+
+    function angleUnion(aLeft, aRight, bLeft, bRight) {
+
+        if (aLeft <= -Math.PI) aLeft += PI2;
+        if (aLeft > Math.PI) aLeft -= PI2;
+        if (aRight < aLeft) aRight += PI2;
+        if (aRight >= aLeft + Math.PI) aRight -= PI2;
+
+        if (bLeft <= -Math.PI) bLeft += PI2;
+        if (bLeft > Math.PI) bLeft -= PI2;
+        if (bRight < bLeft) bRight += PI2;
+        if (bRight >= bLeft + Math.PI) bRight -= PI2;
+
+        if (aLeft > bLeft) {
+
+            let temp = aLeft;
+            aLeft = bLeft;
+            bLeft = temp;
+
+            temp = aRight;
+            aRight = bRight;
+            bRight = temp;
+
+        }
+
+        if (bLeft <= aRight) return new Angle(aLeft, Math.max(aRight, bRight));
+        if (aLeft + PI2 <= bRight) return new Angle(bLeft, Math.max(aRight, bRight - PI2));
+
+        return false;
+
+    }
+
+    //http://stackoverflow.com/a/13519549
+    function angleIntersection(aLeft, aRight, bLeft, bRight) {
+
+        //Normalize left to [0, 2*PI) and right to (left, left + 2*PI] (to allow for obtuse angles)
+
+        while (aLeft < 0) aLeft += PI2;
+        while (aLeft >= PI2) aLeft -= PI2;
+        while (aRight <= aLeft) aRight += PI2;
+        while (aRight > aLeft + PI2) aRight -= PI2;
+
+        while (bLeft < 0) bLeft += PI2;
+        while (bLeft >= PI2) bLeft -= PI2;
+        while (bRight <= bLeft) bRight += PI2;
+        while (bRight > bLeft + PI2) bRight -= PI2;
+
+        //Angles are essentially normalized segments along a line; make sure a comes before b
+
+        if (aLeft > bLeft) {
+
+            let temp = aLeft;
+            aLeft = bLeft;
+            bLeft = temp;
+
+            temp = aRight;
+            aRight = bRight;
+            bRight = temp;
+
+        }
+
+        console.log(aLeft, aRight, bLeft, bRight);
+
+        //The segments intersect, spit out that intersection
+        if (bLeft <= aRight) return new Angle(bLeft, Math.min(aRight, bRight));
+
+        //They don't, no intersection
+        return false;
+
+    }
+
+    //True if n is between a or b inclusively
     function inclusiveBetween(n, a, b) {
         if (n < 0) n += PI2;
         if (a < 0) a += PI2;
@@ -140,6 +216,7 @@
     }
 
     function orientation(start, end, c) {
+
         let val = (end.y - start.y) * (c.x - end.x) -
             (end.x - start.x) * (c.y - end.y);
 
@@ -622,7 +699,10 @@
         mergePolygons: mergePolygons,
         growPolygon: growPolygon,
         growPolygons: growPolygons,
-        boxIntersect: boxIntersect
+        boxIntersect: boxIntersect,
+        angleIntersection: angleIntersection,
+        angleUnion: angleUnion,
+        angleBetweenPoints: angleBetweenPoints
     };
 
 }(window));

@@ -111,6 +111,49 @@
 
     }
 
+    class Arc extends Element {
+
+        constructor(x, y, left, right, r) {
+            super();
+
+            this.x = x;
+            this.y = y;
+            this.left = left;
+            this.right = right;
+            this.ori = Math.abs((this.right - this.left) % (Math.PI * 2)) < Math.PI ? 0 : 1;
+
+            this.radius = r || 25;
+
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            this.element.obj = this;
+
+            this.element.setAttribute("stroke", "black");
+            this.element.setAttribute("stroke-width", "2");
+            this.element.setAttribute("fill", "none");
+
+            this.draw();
+        }
+
+        draw() {
+
+            // console.log(this.x, this.y, this.left, this.right, this.radius);
+            // console.log((this.x + this.radius * Math.cos(this.left)), (this.y + this.radius * Math.sin(this.left)));
+            // console.log((this.x + this.radius * Math.cos(this.right)), (this.y + this.radius * Math.sin(this.right)));
+
+
+
+            this.element.setAttribute("d", "M " + (this.x + this.radius * Math.cos(this.left)) + " " +
+                                                  (this.y + this.radius * Math.sin(this.left)) +
+                                                  " A " + this.radius + " " + this.radius + " 0 " + this.ori + " 0 " +
+                                                  (this.x + this.radius * Math.cos(this.right)) + " " +
+                                                  (this.y + this.radius * Math.sin(this.right)));
+
+            return this;
+
+        }
+
+    }
+
     class Path extends Element {
 
         constructor(footprint) {
@@ -124,7 +167,7 @@
 
             this.element.setAttribute("stroke", "black");
             this.element.setAttribute("stroke-width", "3");
-            this.element.setAttribute("fill", "rgba(0, 0, 0, 0.1");
+            this.element.setAttribute("fill", "rgba(0, 0, 0, 0.1)");
             this.draw();
         }
 
@@ -189,7 +232,8 @@
     }
 
     function clearTemp() {
-
+        // console.log("clearTemp");
+        // console.trace();
         for (let i = 0; i < tempStuff.length; i++)
             tempStuff[i].detach();
             //if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
@@ -394,6 +438,7 @@
         Path: Path,
         Line: Line,
         Text: Text,
+        Arc: Arc,
         clearTemp: clearTemp,
         clear: clear
     };
