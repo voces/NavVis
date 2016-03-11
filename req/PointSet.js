@@ -182,7 +182,7 @@
                                      angleBetweenPoints(point, lPoint(polygon, point)));
 
             // if (this.x === 5 && this.y === 953) {
-                console.log("onAdd", this.toString(), "\t", polygon.id, polygon.colorName, newSlice);
+                // console.log("onAdd", this.toString(), "\t", polygon.id, polygon.colorName, newSlice);
                 // console.trace();
             // }
 
@@ -238,7 +238,7 @@
 
         onObstacleAdd(polygon) {
 
-            console.log("obstacleAdd", this, polygon);
+            // console.log("obstacleAdd", this, polygon);
 
             //Only one, naive calculation only
             if (this.obstacles.size === 1) {
@@ -256,7 +256,7 @@
                 this.obstacleSlices.set(polygon, slice);
 
                 //Obstacle takes less than 180 degrees; so point is external
-                console.log(this.toString(), slice.valueOf(), slice);
+                // console.log(this.toString(), slice.valueOf(), slice);
                 if (slice < Math.PI) this.external = true;
                 else this.external = false;
 
@@ -271,7 +271,7 @@
 
         onObstacleDelete(polygon) {
 
-            console.log("obstacleDelete", this, polygon);
+            // console.log("obstacleDelete", this, polygon);
 
         }
 

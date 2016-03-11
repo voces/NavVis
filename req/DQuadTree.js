@@ -370,6 +370,39 @@
 
     };
 
+    DQuadTree.prototype.iterateInRange = function* (min, max) {
+
+        //Start off the cells with the superstructure
+        let cells = [this],
+            cell,
+
+            used = new WeakSet();
+
+        //Loop while non-empty
+        /* jshint -W084 */
+        while (cell = cells.pop())
+
+            //We have children; add them to cells and try again
+            if (cell.children) {
+                if (max.x >= cell.x && max.y >= cell.y) cells.push(cell.children[0]);
+                if (min.x <= cell.x && max.y >= cell.y) cells.push(cell.children[1]);
+                if (min.x <= cell.x && min.y <= cell.y) cells.push(cell.children[2]);
+                if (max.x >= cell.x && min.y <= cell.y) cells.push(cell.children[3]);
+
+            //No children; return self
+            } else
+
+                for (let i = 0; i < cell.contents.length; i++)
+                    if (used.has(cell.contents[i])) continue;
+                    else {
+
+                        used.add(cell.contents[i]);
+                        yield cell.contents[i];
+
+                    }
+
+    };
+
     /* jshint -W084 */
     DQuadTree.prototype.queryLine = function* (x1, y1, x2, y2) {
 

@@ -8,36 +8,31 @@
 
         svg,
 
-        tempStuff = [],
+        defaultParent,
 
-        movingLine = null,
-        currentPath = null,
+        currentPath = null, snapPoint = null,
 
-        elements = [],
-
-        moving = false, currentTarget = null;
+        elements = [];
 
     class Element {
 
         constructor() {
+
             this.element = null;
             elements.push(this);
+
+            this.parent = defaultParent;
+
         }
 
         append() {
-            if (this.element) svg.appendChild(this.element);
+            if (this.element) this.parent.appendChild(this.element);
 
             return this;
         }
 
         detach() {
-            if (this.element && this.element.parentNode === svg) svg.removeChild(this.element);
-
-            return this;
-        }
-
-        temp() {
-            tempStuff.push(this);
+            if (this.element && this.element.parentNode instanceof SVGElement) this.parent.removeChild(this.element);
 
             return this;
         }
@@ -62,6 +57,52 @@
 
         width(width) {
             if (this.element) this.element.setAttribute("stroke-width", width);
+
+            return this;
+        }
+
+        parent(parent) {
+
+            if (this.element && this.element.parentNode instanceof SVGElement) {
+
+                this.parent.removeChild(this.element);
+                this.parent = parent;
+                this.parent.appendChild(this.element);
+
+            } else this.parent = parent;
+
+            return this;
+
+        }
+
+    }
+
+    class Layer extends Element {
+
+        constructor(x, y, parent) {
+            super();
+
+            this.x = x || 0;
+            this.y = y || 0;
+
+            this.element = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            this.element.obj = this;
+
+            this.element.setAttribute("x", x);
+            this.element.setAttribute("y", y);
+
+            if (parent) this.parent = parent;
+
+        }
+
+        append() {
+            if (this.element) this.parent.appendChild(this.element);
+
+            return this;
+        }
+
+        detach() {
+            if (this.element && this.element.parentNode instanceof SVGElement) this.parent.removeChild(this.element);
 
             return this;
         }
@@ -93,7 +134,11 @@
             this.element.setAttribute("r", this.radius);
         }
 
-        draw() {
+        draw(x, y) {
+
+            if (typeof x !== "undefined") this.x = x;
+            if (typeof y !== "undefined") this.y = y;
+
             this.element.setAttribute("cx", this.x);
             this.element.setAttribute("cy", this.y);
         }
@@ -108,6 +153,8 @@
 
             return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         }
+
+
 
     }
 
@@ -138,9 +185,7 @@
 
             // console.log(this.x, this.y, this.left, this.right, this.radius);
             // console.log((this.x + this.radius * Math.cos(this.left)), (this.y + this.radius * Math.sin(this.left)));
-            // console.log((this.x + this.radius * Math.cos(this.right)), (this.y + this.radius * Math.sin(this.right)));
-
-
+            //console.log((this.x + this.radius * Math.cos(this.right)), (this.y + this.radius * Math.sin(this.right)));
 
             this.element.setAttribute("d", "M " + (this.x + this.radius * Math.cos(this.left)) + " " +
                                                   (this.y + this.radius * Math.sin(this.left)) +
@@ -231,17 +276,6 @@
 
     }
 
-    function clearTemp() {
-        // console.log("clearTemp");
-        // console.trace();
-        for (let i = 0; i < tempStuff.length; i++)
-            tempStuff[i].detach();
-            //if (typeof tempStuff[i] === "object" && tempStuff[i] instanceof Path) tempStuff[i].detach();
-
-        tempStuff = [];
-
-    }
-
     function clear() {
         for (let i = 0; i < elements.length; i++)
             elements[i].detach();
@@ -250,167 +284,98 @@
     }
 
     function svgDown(e) {
-        if (e.target === svg) return;
-        if (e.button !== 0) return;
-        if (e.target.classList.contains("draggable")) return;
 
-        currentTarget = e.target.obj || e.target;
+        if (currentPath) {
 
-        e.stopPropagation();
-        e.preventDefault();
+            if (snapPoint) currentPath.live = false;
+
+            else {
+
+                let point = new Point(e.pageX, e.pageY).append();
+
+                currentPath.footprint.splice(currentPath.footprint.length - 1, 0, point);
+                currentPath.draw();
+
+            }
+
+            for (let i = 0; i < onAdd.length; i++)
+                onChange[i](currentPath);
+
+        } else if (e.target === svg) {
+
+            currentPath = new Path([
+                new Point(e.pageX, e.pageY).append(),
+                new Point(e.pageX, e.pageY).append()
+            ]).close().draw().append();
+
+            currentPath.live = true;
+
+            for (let i = 0; i < onAdd.length; i++)
+                onAdd[i](currentPath);
+
+        }
+
     }
 
     function svgUp(e) {
 
-        if (e.target.classList.contains("draggable")) return;
+        if (!currentPath) {
 
-        if (e.button !== 0) {
+            currentPath = new Path([
+                new Point(e.pageX, e.pageY).append(),
+                new Point(e.pageX, e.pageY).append()
+            ]).close().draw().append();
+
+            currentPath.live = true;
+
             for (let i = 0; i < onAdd.length; i++)
-                onAdd[i](new Path([
-                    new Point(e.clientX - 25, e.clientY + 25).append(),
-                    new Point(e.clientX - 25, e.clientY - 25).append(),
-                    new Point(e.clientX + 25, e.clientY - 25).append(),
-                    new Point(e.clientX + 25, e.clientY + 25).append()
-                ]).close().draw().append());
+                onAdd[i](currentPath);
 
-            return;
+        } else if (!currentPath.live) {
+
+            currentPath = null;
+            snapPoint = null;
+
         }
 
-        if (!moving)
+    }
 
-            if (currentTarget === null || currentPath !== null) {
-                let point = new Point(e.clientX, e.clientY);
+    function distanceBetweenPoints(a, b) {
 
-                if (currentPath === null) {
-                    currentPath = new Path([point]).draw().append();
-                    window.currentPath = currentPath;
-                    movingLine = new Line(point, point).append();
+        return Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
 
-                    point.path = currentPath;
-
-                    point.append();
-
-                } else if (point.distanceToPoint(currentPath.footprint[0]) < 16) {
-
-                    currentPath.ended = true;
-                    currentPath.draw();
-
-                    for (let i = 0; i < onAdd.length; i++)
-                        onAdd[i](currentPath);
-
-                    currentPath = null;
-
-                    movingLine.detach();
-                    movingLine = null;
-
-                } else {
-                    currentPath.footprint.push(point);
-                    currentPath.draw();
-
-                    point.path = currentPath;
-
-                    point.append();
-
-                }
-
-            } else if (currentTarget instanceof Point)
-
-                //Point is part of a path
-                if (currentTarget.path) {
-
-                    currentTarget.detach();
-                    currentTarget.path.footprint.splice(currentTarget.path.footprint.indexOf(currentTarget), 1);
-
-                    if (currentTarget.path.footprint.length === 2) {
-                        currentTarget.path.ended = false;
-
-                        currentTarget.path.draw();
-
-                        for (let i = 0; i < onChange.length; i++)
-                            onChange[i](currentTarget);
-
-                    } else if (currentTarget.path.footprint.length === 1) {
-                        currentTarget.path.detach();
-
-                        for (let i = 0; i < onChange.length; i++)
-                            onChange[i](currentTarget);
-
-                        currentTarget.path.footprint[0].path = null;
-
-                    } else {
-                        currentTarget.path.draw();
-
-                        for (let i = 0; i < onChange.length; i++)
-                            onChange[i](currentTarget);
-                    }
-
-                } else {
-                    for (let i = 0; i < onRemove.length; i++)
-                        onRemove[i](currentTarget);
-
-                    currentTarget.detach();
-                }
-
-            else if (currentTarget instanceof Path)
-
-                if (e.timeStamp - currentTarget.lastClick < 300) {
-                    for (let i = 0; i < currentTarget.footprint.length; i++) {
-                        currentTarget.footprint[i].detach();
-                        currentTarget.footprint[i].path = null;
-                    }
-
-                    for (let i = 0; i < onRemove.length; i++)
-                        onRemove[i](currentTarget);
-
-                    currentTarget.detach();
-                } else currentTarget.lastClick = e.timeStamp;
-
-        moving = false;
-        currentTarget = null;
     }
 
     function svgMove(e) {
 
-        if (e.target.classList.contains("draggable")) return;
+        if (currentPath) {
 
-        if (currentPath !== null) {
-            movingLine.end = {x: e.clientX, y: e.clientY};
-            movingLine.draw();
+            let distance = distanceBetweenPoints(currentPath.footprint[0], {x: e.pageX, y: e.pageY});
 
-            return;
+            if (distance < 16) {
 
-        }
+                if (snapPoint) return;
 
-        if (currentTarget !== null) {
+                snapPoint = currentPath.footprint.splice(currentPath.footprint.length - 1, 1)[0].detach();
 
-            moving = true;
+                currentPath.draw();
 
-            if (currentTarget instanceof Point) {
-                currentTarget.x = e.clientX;
-                currentTarget.y = e.clientY;
-                currentTarget.draw();
+            } else {
 
-                if (currentTarget.path) {
-                    currentTarget.path.draw();
+                if (snapPoint) {
 
-                    for (let i = 0; i < onChange.length; i++)
-                        onChange[i](currentTarget.path);
+                    currentPath.footprint.push(snapPoint.append());
+                    snapPoint = 0;
 
-                } else for (let i = 0; i < onChange.length; i++) onChange[i](currentTarget);
-
-            } else if (currentTarget instanceof Path) {
-                for (let i = 0; i < currentTarget.footprint.length; i++) {
-                    currentTarget.footprint[i].x += e.movementX;
-                    currentTarget.footprint[i].y += e.movementY;
-                    currentTarget.footprint[i].draw();
                 }
 
-                currentTarget.draw();
-
-                for (let i = 0; i < onChange.length; i++)
-                    onChange[i](currentTarget);
+                currentPath.footprint[currentPath.footprint.length - 1].draw(e.pageX, e.pageY);
+                currentPath.draw();
 
             }
+
+            for (let i = 0; i < onAdd.length; i++)
+                onChange[i](currentPath);
 
         }
 
@@ -419,6 +384,7 @@
     document.addEventListener("DOMContentLoaded", function () {
 
         svg = document.getElementById("svg");
+        defaultParent = svg;
 
         svg.addEventListener("mousedown", svgDown);
         svg.addEventListener("mouseup", svgUp);
@@ -435,11 +401,11 @@
         onChange: onChange,
         Point: Point,
         Element: Element,
+        Layer: Layer,
         Path: Path,
         Line: Line,
         Text: Text,
         Arc: Arc,
-        clearTemp: clearTemp,
         clear: clear
     };
 

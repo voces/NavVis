@@ -50,7 +50,7 @@
 
             this.angle = Math.abs(Math.atan2(b.y - a.y, b.x - a.x));
             this.distanceTo = distToSegment(a, b);
-            console.log(a.toString(), b.toString(), this.angle, this.distanceTo);
+            // console.log(a.toString(), b.toString(), this.angle, this.distanceTo);
 
         }
 
@@ -140,7 +140,7 @@
 
             edge.id = this.count++;
 
-            if (edge.id === 22) console.trace("edge 22");
+            // if (edge.id === 22) console.trace("edge 22");
 
             //Assure we can get to the edge from a
             if (tMap = this.edges.get(a))

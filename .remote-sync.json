@@ -1,0 +1,12 @@
+/*{
+  "uploadOnSave": true,
+  "hostname": "notextures.io",
+  "port": "22",
+  "target": "\\Projects\\pathing\\mvis",
+  "ignore": [
+    ".git/**"
+  ],
+  "username": "verit",
+  "keyfile": "Y:\\atomPriv",
+  "transport": "scp"
+}*/
