@@ -261,14 +261,19 @@
         constructor(text, x, y) {
             super();
 
+            if (typeof x === "undefined") x = window.innerWidth / 2;
+            if (typeof y === "undefined") y = window.innerHeight / 2;
+
             this.element = document.createElementNS("http://www.w3.org/2000/svg", "text");
 
             this.element.textContent = text;
 
             this.append();
 
-            this.element.setAttribute("x", (x || window.innerWidth / 2) - this.element.offsetWidth / 2);
-            this.element.setAttribute("y", (y || window.innerHeight / 2) + this.element.offsetHeight / 2);
+            let bounds = this.element.getBoundingClientRect();
+
+            this.element.setAttribute("x", x - bounds.width / 2);
+            this.element.setAttribute("y", y + bounds.height / 2);
 
             this.detach();
 
