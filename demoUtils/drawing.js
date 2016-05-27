@@ -2,6 +2,8 @@
 (function () {
     "use strict";
 
+    const nativeToString = {}.toString;
+
     let onAdd = [],
         onRemove = [],
         onChange = [],
@@ -13,6 +15,10 @@
         currentPath = null, snapPoint = null,
 
         elements = [];
+
+    function defaultToString() {
+        return this.x + "," + this.y;
+    }
 
     class Element {
 
@@ -61,7 +67,7 @@
             return this;
         }
 
-        parent(parent) {
+        layer(parent) {
 
             if (this.element && this.element.parentNode instanceof SVGElement) {
 
@@ -103,6 +109,18 @@
 
         detach() {
             if (this.element && this.element.parentNode instanceof SVGElement) this.parent.removeChild(this.element);
+
+            return this;
+        }
+
+        appendChild(element) {
+            if (this.element) this.element.appendChild(element);
+
+            return this;
+        }
+
+        removeChild(element) {
+            if (this.element) this.element.removeChild(element);
 
             return this;
         }
@@ -209,6 +227,10 @@
 
             this.element = document.createElementNS("http://www.w3.org/2000/svg", "path");
             this.element.obj = this;
+
+            for (let i = 0; i < this.footprint.length; i++)
+                if (this.footprint[i].toString === {}.toString)
+                    this.footprint[i].toString = defaultToString;
 
             this.element.setAttribute("stroke", "black");
             this.element.setAttribute("stroke-width", "3");
@@ -353,7 +375,7 @@
 
     function svgMove(e) {
 
-        if (currentPath) {
+        if (currentPath && currentPath.live) {
 
             let distance = distanceBetweenPoints(currentPath.footprint[0], {x: e.pageX, y: e.pageY});
 
@@ -411,7 +433,12 @@
         Line: Line,
         Text: Text,
         Arc: Arc,
-        clear: clear
+        clear: clear,
+        setDefaultParent: newParent => defaultParent = newParent
     };
+
+    Object.defineProperty(window.drawing, "svg", {
+        get: () => svg
+    });
 
 }(window));
