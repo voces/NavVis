@@ -14,7 +14,9 @@
 
         currentPath = null, snapPoint = null,
 
-        elements = [];
+        elements = [],
+
+        drawId = 0;
 
     function defaultToString() {
         return this.x + "," + this.y;
@@ -23,6 +25,8 @@
     class Element {
 
         constructor() {
+
+            this.drawId = drawId++;
 
             this.element = null;
             elements.push(this);

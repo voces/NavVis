@@ -10,12 +10,11 @@
 
     function onAdd(path) {
 
-        let windingSum = (path.footprint[0].x - path.footprint[path.footprint.length - 1].x) * (path.footprint[0].y + path.footprint[path.footprint.length - 1].y);
-        for (let i = 0; i < path.footprint.length - 1; i++)
-            windingSum += (path.footprint[i + 1].x - path.footprint[i].x) * (path.footprint[i + 1].y + path.footprint[i].y);
+        // console.log("before", util.arrayToString(path.footprint, "   "));
 
-        if (windingSum < 0)
-            util.swapLoopArrReverse(path.footprint);
+        util.forceCounterClockwise(path.footprint);
+
+        // console.log("after", util.arrayToString(path.footprint, "   "));
 
         mVis.addImmobile(path.footprint);
 
